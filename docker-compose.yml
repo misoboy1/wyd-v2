@@ -1,0 +1,103 @@
+# 중계양업성당 WYD 2027 — 웹서버(nginx) / WAS(api) / DB(postgres) / 터널(ngrok)
+# GCP e2-micro(RAM 1GB) 기준 메모리 상한. 실행: docker compose up -d --build
+name: wyd
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: wyd
+      POSTGRES_USER: wyd
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD 를 .env 에 설정하세요}
+      TZ: Asia/Seoul
+    command: >
+      postgres -c shared_buffers=64MB -c effective_cache_size=192MB -c work_mem=4MB
+               -c maintenance_work_mem=32MB -c max_connections=30 -c wal_buffers=4MB
+               -c timezone=Asia/Seoul -c log_min_duration_statement=1000
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U wyd -d wyd"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    mem_limit: 256m
+    networks: [internal]
+
+  api:
+    build: { context: ., dockerfile: apps/api/Dockerfile }
+    restart: unless-stopped
+    depends_on:
+      db: { condition: service_healthy }
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgres://wyd:${DB_PASSWORD}@db:5432/wyd
+      DB_POOL_MAX: "10"
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET 을 .env 에 설정하세요(32자 이상 무작위)}
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+      COOKIE_SECURE: ${COOKIE_SECURE:-true}
+      UPLOAD_DIR: /srv/uploads
+      WYD_SYNC_ENABLED: ${WYD_SYNC_ENABLED:-true}
+      SEED_CONTENT: ${SEED_CONTENT:-true}
+    volumes:
+      - uploads:/srv/uploads
+    mem_limit: 256m
+    networks: [internal, edge]   # edge: 묵주기도 현황 수집용 외부 접속(포트는 열지 않음)
+
+  web:
+    build: { context: ., dockerfile: apps/web/Dockerfile }
+    restart: unless-stopped
+    depends_on: [api]
+    volumes:
+      - uploads:/srv/uploads:ro
+    # 로컬 확인용 포트(서버에서는 127.0.0.1에만 열림 — 외부 공개는 ngrok이 담당)
+    ports:
+      - "127.0.0.1:8080:80"
+    mem_limit: 64m
+    networks: [internal, edge]
+
+  ngrok:
+    image: ngrok/ngrok:3-alpine
+    restart: unless-stopped
+    depends_on: [web]
+    environment:
+      NGROK_AUTHTOKEN: ${NGROK_AUTHTOKEN:?NGROK_AUTHTOKEN 을 .env 에 설정하세요}
+    # 무료 고정 도메인 1개: https://dashboard.ngrok.com/domains 에서 발급한 주소
+    command: ["http", "--url=${NGROK_DOMAIN:?NGROK_DOMAIN 을 .env 에 설정하세요}", "web:80", "--log=stdout"]
+    mem_limit: 64m
+    networks: [edge]
+
+  # 매일 03:30 DB 백업(7일 보관) → ./backups
+  backup:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    depends_on:
+      db: { condition: service_healthy }
+    environment:
+      PGPASSWORD: ${DB_PASSWORD}
+      TZ: Asia/Seoul
+    volumes:
+      - ./backups:/backups
+      - ./scripts/backup.sh:/backup.sh:ro
+    entrypoint: ["/bin/sh", "-c", "echo '30 3 * * * /bin/sh /backup.sh' | crontab - && crond -f -l 8"]
+    mem_limit: 48m
+    networks: [internal]
+
+  # (대안) Cloudflare Tunnel — ngrok 무료 경고 페이지·대역폭 한도를 피하려면 ngrok 대신 사용
+  # cloudflared:
+  #   image: cloudflare/cloudflared:latest
+  #   restart: unless-stopped
+  #   command: tunnel --no-autoupdate run --token ${CF_TUNNEL_TOKEN}
+  #   depends_on: [web]
+  #   networks: [edge]
+
+volumes:
+  pgdata:
+  uploads:
+
+networks:
+  internal:
+    internal: true   # DB·WAS는 외부와 단절
+  edge:

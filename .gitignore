@@ -1,0 +1,8 @@
+node_modules
+dist
+.env
+.data/
+*.log
+backups/*.sql.gz
+migration-report.csv
+.DS_Store

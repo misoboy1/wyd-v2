@@ -1,0 +1,116 @@
+@import "tailwindcss";
+
+/* 다크 모드 변형: data-theme="dark" 또는 OS 설정(명시적 light 제외). 색은 대부분 CSS 변수로 자동 전환 */
+@custom-variant dark {
+  &:where([data-theme="dark"], [data-theme="dark"] *) { @slot; }
+  @media (prefers-color-scheme: dark) { &:where(:root:not([data-theme="light"]) *) { @slot; } }
+}
+
+:root {
+  color-scheme: light;
+  --bg: #f6f7f9;
+  --surface: #ffffff;
+  --surface-2: #f1f3f6;
+  --surface-3: #e7eaf0;
+  --line: #e3e6ec;
+  --line-strong: #cfd5df;
+  --ink: #0f172a;
+  --ink-2: #475467;
+  --ink-3: #7a8699;
+  --primary: #1b4fc4;          /* WYD 서울 블루 */
+  --primary-ink: #ffffff;
+  --primary-soft: #e8eefc;
+  --primary-soft-ink: #1a44a8;
+  --accent: #e0312f;           /* WYD 레드 */
+  --accent-soft: #fdecec;
+  --gold: #b7791f;
+  --gold-soft: #fdf4e3;
+  --good: #16794a; --good-soft: #e5f5ec;
+  --warn: #a45b00; --warn-soft: #fff2dc;
+  --bad: #c62828;  --bad-soft: #fdeaea;
+  --series-room: #2a78d6;      /* 교리실 (dataviz 슬롯1) */
+  --series-hs: #eb6834;        /* 홈스테이 (슬롯2) */
+  --series-none: #c8ccd4;      /* 미배정(중립) */
+  --ring: rgba(27, 79, 196, 0.35);
+  --shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.06);
+  --shadow: 0 1px 3px rgba(16, 24, 40, 0.08), 0 4px 12px rgba(16, 24, 40, 0.05);
+  --shadow-lg: 0 12px 40px rgba(16, 24, 40, 0.18);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #0e1014; --surface: #16191f; --surface-2: #1d2129; --surface-3: #262b35;
+    --line: #2a2f3a; --line-strong: #394050;
+    --ink: #eef1f6; --ink-2: #b3bccb; --ink-3: #828da0;
+    --primary: #5b8cf5; --primary-ink: #0b1020; --primary-soft: #1b2743; --primary-soft-ink: #a9c3ff;
+    --accent: #f06462; --accent-soft: #3a1c1d; --gold: #e0a84a; --gold-soft: #33280f;
+    --good: #4cc38a; --good-soft: #13291f; --warn: #f0a943; --warn-soft: #33250f; --bad: #f07070; --bad-soft: #3a1b1b;
+    --series-room: #3987e5; --series-hs: #d95926; --series-none: #4a505c;
+    --ring: rgba(91, 140, 245, 0.45);
+    --shadow-sm: 0 1px 2px rgba(0,0,0,.4); --shadow: 0 1px 3px rgba(0,0,0,.5), 0 4px 12px rgba(0,0,0,.3); --shadow-lg: 0 12px 40px rgba(0,0,0,.6);
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0e1014; --surface: #16191f; --surface-2: #1d2129; --surface-3: #262b35;
+  --line: #2a2f3a; --line-strong: #394050;
+  --ink: #eef1f6; --ink-2: #b3bccb; --ink-3: #828da0;
+  --primary: #5b8cf5; --primary-ink: #0b1020; --primary-soft: #1b2743; --primary-soft-ink: #a9c3ff;
+  --accent: #f06462; --accent-soft: #3a1c1d; --gold: #e0a84a; --gold-soft: #33280f;
+  --good: #4cc38a; --good-soft: #13291f; --warn: #f0a943; --warn-soft: #33250f; --bad: #f07070; --bad-soft: #3a1b1b;
+  --series-room: #3987e5; --series-hs: #d95926; --series-none: #4a505c;
+  --ring: rgba(91, 140, 245, 0.45);
+  --shadow-sm: 0 1px 2px rgba(0,0,0,.4); --shadow: 0 1px 3px rgba(0,0,0,.5), 0 4px 12px rgba(0,0,0,.3); --shadow-lg: 0 12px 40px rgba(0,0,0,.6);
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+  --color-primary: var(--primary);
+  --color-primary-ink: var(--primary-ink);
+  --color-primary-soft: var(--primary-soft);
+  --color-primary-soft-ink: var(--primary-soft-ink);
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
+  --color-gold: var(--gold);
+  --color-gold-soft: var(--gold-soft);
+  --color-good: var(--good);
+  --color-good-soft: var(--good-soft);
+  --color-warn: var(--warn);
+  --color-warn-soft: var(--warn-soft);
+  --color-bad: var(--bad);
+  --color-bad-soft: var(--bad-soft);
+  --color-series-room: var(--series-room);
+  --color-series-hs: var(--series-hs);
+  --color-series-none: var(--series-none);
+  --shadow-card: var(--shadow);
+  --shadow-soft: var(--shadow-sm);
+  --shadow-pop: var(--shadow-lg);
+  --font-sans: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", system-ui, sans-serif;
+}
+
+@layer base {
+  html { -webkit-text-size-adjust: 100%; }
+  body { @apply bg-bg text-ink font-sans antialiased; font-feature-settings: "tnum" 0; letter-spacing: -0.005em; }
+  * { border-color: var(--line); }
+  :focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; border-radius: 6px; }
+  ::selection { background: var(--primary-soft); }
+  .tabular { font-variant-numeric: tabular-nums; }
+}
+
+@media print {
+  .no-print { display: none !important; }
+  body { background: #fff; }
+  main { padding: 0 !important; }
+}
+
+@keyframes fade-in { from { opacity: 0 } to { opacity: 1 } }
+@keyframes slide-up { from { transform: translateY(24px); opacity: .6 } to { transform: none; opacity: 1 } }
+@keyframes pop-in { from { transform: translate(-50%, -48%) scale(.98); opacity: 0 } to { transform: translate(-50%, -50%) scale(1); opacity: 1 } }

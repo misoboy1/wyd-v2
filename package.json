@@ -1,0 +1,28 @@
+{
+  "name": "wyd2027-platform",
+  "private": true,
+  "version": "2.0.0",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "build": "npm run build -w @wyd/shared && npm run build -w @wyd/api && npm run build -w @wyd/web",
+    "dev:api": "npm run dev -w @wyd/api",
+    "dev:web": "npm run dev -w @wyd/web",
+    "test": "npm run test -w @wyd/shared",
+    "test:smoke": "node apps/api/test/smoke.mjs",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "dev:db": "node scripts/dev-db.mjs"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "allowScripts": {
+    "@embedded-postgres/darwin-arm64@18.4.0-beta.17": true,
+    "esbuild@0.18.20": true,
+    "esbuild@0.25.12": true,
+    "esbuild@0.28.2": true,
+    "fsevents@2.3.3": true
+  }
+}

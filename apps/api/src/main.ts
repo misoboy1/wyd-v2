@@ -1,0 +1,34 @@
+import "reflect-metadata";
+import { NestFactory } from "@nestjs/core";
+import { FastifyAdapter, type NestFastifyApplication } from "@nestjs/platform-fastify";
+import cookie from "@fastify/cookie";
+import helmet from "@fastify/helmet";
+import multipart from "@fastify/multipart";
+import fstatic from "@fastify/static";
+import path from "node:path";
+import { mkdirSync } from "node:fs";
+import { AppModule } from "./app.module.js";
+import { env } from "./common/env.js";
+import { runMigrations } from "./db/migrate.js";
+import { ensureBootstrap } from "./cli/bootstrap.js";
+
+async function main() {
+  await runMigrations();
+  await ensureBootstrap();
+
+  const adapter = new FastifyAdapter({ trustProxy: true, bodyLimit: 5 * 1024 * 1024, logger: env.isProd ? { level: "warn" } : { level: "info" } });
+  const app = await NestFactory.create<NestFastifyApplication>(AppModule, adapter, { logger: ["error", "warn", "log"] });
+  app.setGlobalPrefix("api");
+  await app.register(cookie as any);
+  await app.register(helmet as any, { contentSecurityPolicy: false }); // CSP는 nginx에서 (정적 페이지 기준)
+  await app.register(multipart as any);
+  // 개발 모드: 업로드 파일 직접 서빙(운영에서는 nginx가 /uploads/ 서빙)
+  if (!env.isProd) {
+    const root = path.resolve(env.UPLOAD_DIR); mkdirSync(root, { recursive: true });
+    await app.register(fstatic as any, { root, prefix: "/uploads/", decorateReply: false });
+  }
+  app.enableShutdownHooks();
+  await app.listen({ port: env.PORT, host: env.HOST });
+  console.log(`WYD API listening on :${env.PORT}`);
+}
+main().catch((e) => { console.error(e); process.exit(1); });
