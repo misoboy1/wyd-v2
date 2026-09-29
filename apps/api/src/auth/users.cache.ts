@@ -15,5 +15,8 @@ export class UsersCache {
     this.m.set(id, { u, at: Date.now() });
     return u;
   }
-  invalidate(id?: number) { if (id == null) this.m.clear(); else this.m.delete(id); }
+  invalidate(id?: number) {
+    if (id == null) this.m.clear();
+    else this.m.delete(id);
+  }
 }

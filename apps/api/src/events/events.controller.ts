@@ -10,8 +10,8 @@ export class EventsController {
   @Sse()
   stream(): Observable<MessageEvent> {
     return merge(
-      this.events.changes$.pipe(map((e) => ({ type: "change", data: e }) as MessageEvent)),
-      interval(25_000).pipe(map(() => ({ type: "ping", data: { t: Date.now() } }) as MessageEvent)),
+      this.events.changes$.pipe(map((e) => ({ type: "change", data: e }))),
+      interval(25_000).pipe(map(() => ({ type: "ping", data: { t: Date.now() } }))),
     );
   }
 }

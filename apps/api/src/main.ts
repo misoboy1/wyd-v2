@@ -16,19 +16,27 @@ async function main() {
   await runMigrations();
   await ensureBootstrap();
 
-  const adapter = new FastifyAdapter({ trustProxy: true, bodyLimit: 5 * 1024 * 1024, logger: env.isProd ? { level: "warn" } : { level: "info" } });
+  const adapter = new FastifyAdapter({
+    trustProxy: true,
+    bodyLimit: 5 * 1024 * 1024,
+    logger: env.isProd ? { level: "warn" } : { level: "info" },
+  });
   const app = await NestFactory.create<NestFastifyApplication>(AppModule, adapter, { logger: ["error", "warn", "log"] });
   app.setGlobalPrefix("api");
   await app.register(cookie as any);
-  await app.register(helmet as any, { contentSecurityPolicy: false }); // CSP는 nginx에서 (정적 페이지 기준)
+  await app.register(helmet, { contentSecurityPolicy: false }); // CSP는 nginx에서 (정적 페이지 기준)
   await app.register(multipart as any);
   // 개발 모드: 업로드 파일 직접 서빙(운영에서는 nginx가 /uploads/ 서빙)
   if (!env.isProd) {
-    const root = path.resolve(env.UPLOAD_DIR); mkdirSync(root, { recursive: true });
-    await app.register(fstatic as any, { root, prefix: "/uploads/", decorateReply: false });
+    const root = path.resolve(env.UPLOAD_DIR);
+    mkdirSync(root, { recursive: true });
+    await app.register(fstatic, { root, prefix: "/uploads/", decorateReply: false });
   }
   app.enableShutdownHooks();
   await app.listen({ port: env.PORT, host: env.HOST });
   console.log(`WYD API listening on :${env.PORT}`);
 }
-main().catch((e) => { console.error(e); process.exit(1); });
+main().catch((e) => {
+  console.error(e);
+  process.exit(1);
+});

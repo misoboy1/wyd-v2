@@ -1,0 +1,7 @@
+node_modules
+dist
+apps/api/drizzle
+package-lock.json
+*.md
+.data
+backups

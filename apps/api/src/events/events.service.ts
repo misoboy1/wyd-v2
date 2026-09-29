@@ -1,7 +1,11 @@
 import { Injectable } from "@nestjs/common";
 import { Subject } from "rxjs";
 
-export interface ChangeEvent { tables: string[]; by?: number; at: number }
+export interface ChangeEvent {
+  tables: string[];
+  by?: number;
+  at: number;
+}
 
 /** 데이터 변경 알림 버스 — SSE로 접속 중인 모든 화면에 "어떤 표가 바뀌었는지" 전달 */
 @Injectable()

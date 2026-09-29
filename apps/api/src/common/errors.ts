@@ -2,7 +2,12 @@ import { HttpException, HttpStatus } from "@nestjs/common";
 
 /** 프론트가 code로 분기하는 표준 오류. body: { error: code, message, detail? } */
 export class ApiError extends HttpException {
-  constructor(public code: string, message: string, status: number, public detail?: unknown) {
+  constructor(
+    public code: string,
+    message: string,
+    status: number,
+    public detail?: unknown,
+  ) {
     super({ error: code, message, detail }, status);
   }
 }
@@ -21,8 +26,17 @@ export function mapDbError(e: unknown): unknown {
   const err = e as { code?: string; constraint_name?: string; constraint?: string };
   if (err && err.code === "23505") {
     const c = err.constraint_name || err.constraint || "";
-    const what = c.includes("facilities_name") ? "같은 이름의 시설" : c.includes("hid") ? "같은 가정 번호(H)" : c.includes("pid") ? "같은 방문자 번호(P)"
-      : c.includes("departments_name") ? "같은 이름의 분과·구역" : c.includes("username") ? "같은 로그인 아이디" : "중복 값";
+    const what = c.includes("facilities_name")
+      ? "같은 이름의 시설"
+      : c.includes("hid")
+        ? "같은 가정 번호(H)"
+        : c.includes("pid")
+          ? "같은 방문자 번호(P)"
+          : c.includes("departments_name")
+            ? "같은 이름의 분과·구역"
+            : c.includes("username")
+              ? "같은 로그인 아이디"
+              : "중복 값";
     return Duplicate(`${what}이(가) 이미 있습니다.`);
   }
   return e;

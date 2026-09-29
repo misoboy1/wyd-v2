@@ -17,7 +17,10 @@ export const REFRESH_COOKIE = "wyd_rt";
  */
 @Injectable()
 export class AuthGuard implements CanActivate {
-  constructor(private readonly reflector: Reflector, private readonly users: UsersCache) {}
+  constructor(
+    private readonly reflector: Reflector,
+    private readonly users: UsersCache,
+  ) {}
 
   async canActivate(ctx: ExecutionContext): Promise<boolean> {
     if (ctx.getType() !== "http") return true;
@@ -28,7 +31,8 @@ export class AuthGuard implements CanActivate {
     const claims = verifyToken<AccessClaims>(req.cookies?.[ACCESS_COOKIE], "access");
     if (claims) {
       const u = await this.users.get(claims.sub);
-      if (u && u.active && u.tokenVersion === claims.tv) req.user = { id: u.id, username: u.username, name: u.name, role: u.role as Role, team: u.team, homestayId: u.homestayId };
+      if (u && u.active && u.tokenVersion === claims.tv)
+        req.user = { id: u.id, username: u.username, name: u.name, role: u.role as Role, team: u.team, homestayId: u.homestayId };
     }
     const roles = this.reflector.getAllAndOverride<Role[] | undefined>(ROLES_KEY, [ctx.getHandler(), ctx.getClass()]);
     if (roles === undefined) return true;

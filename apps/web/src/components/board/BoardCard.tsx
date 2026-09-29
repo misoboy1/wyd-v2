@@ -6,7 +6,8 @@ import { Badge } from "@/components/ui/badge";
 import { cn, daysBetween } from "@/lib/utils";
 
 /** 최신순(날짜 → id) */
-export const newestFirst = <T extends { date: string; id: number }>(a: T, b: T) => String(b.date).localeCompare(String(a.date)) || b.id - a.id;
+export const newestFirst = <T extends { date: string; id: number }>(a: T, b: T) =>
+  String(b.date).localeCompare(String(a.date)) || b.id - a.id;
 
 /** 3일 이내 글이면 NEW */
 export function isNew(date: string): boolean {
@@ -18,18 +19,48 @@ export function isNew(date: string): boolean {
 export function Meta({ date, author, children }: { date?: string; author?: string; children?: ReactNode }) {
   return (
     <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[12.5px] text-ink-3">
-      {date && <span className="inline-flex items-center gap-1"><CalendarDays className="size-3.5" />{date}</span>}
-      {author && <span className="inline-flex items-center gap-1"><UserRound className="size-3.5" />{author}</span>}
+      {date && (
+        <span className="inline-flex items-center gap-1">
+          <CalendarDays className="size-3.5" />
+          {date}
+        </span>
+      )}
+      {author && (
+        <span className="inline-flex items-center gap-1">
+          <UserRound className="size-3.5" />
+          {author}
+        </span>
+      )}
       {children}
     </div>
   );
 }
 
-export function BoardCard({ title, date, author, body, badges, actions, accent, children, className }: {
-  title: ReactNode; date?: string; author?: string; body?: string; badges?: ReactNode; actions?: ReactNode; accent?: boolean; children?: ReactNode; className?: string;
+export function BoardCard({
+  title,
+  date,
+  author,
+  body,
+  badges,
+  actions,
+  accent,
+  children,
+  className,
+}: {
+  title: ReactNode;
+  date?: string;
+  author?: string;
+  body?: string;
+  badges?: ReactNode;
+  actions?: ReactNode;
+  accent?: boolean;
+  children?: ReactNode;
+  className?: string;
 }) {
   return (
-    <article className={cn("rounded-2xl border border-line bg-surface p-4 shadow-soft sm:p-5", accent && "border-l-4 border-l-primary", className)}>
+    <article
+      className={cn("rounded-2xl border border-line bg-surface p-4 shadow-soft sm:p-5", accent && "border-l-4 border-l-primary", className)}
+    >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-1.5">

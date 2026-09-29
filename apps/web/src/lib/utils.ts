@@ -10,7 +10,10 @@ export const cmp = (a: unknown, b: unknown) => KO.compare(String(a ?? ""), Strin
 export function matchQuery(q: string, ...fields: unknown[]): boolean {
   const terms = q.trim().toLowerCase().split(/\s+/).filter(Boolean);
   if (!terms.length) return true;
-  const hay = fields.map((f) => String(f ?? "")).join(" ").toLowerCase();
+  const hay = fields
+    .map((f) => String(f ?? ""))
+    .join(" ")
+    .toLowerCase();
   return terms.every((t) => hay.includes(t));
 }
 export function daysBetween(fromISO: string, toISO: string): number {

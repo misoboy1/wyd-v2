@@ -17,6 +17,9 @@ export const sortPrep = (list: PrepStep[]) => list.slice().sort((a, b) => (a.sor
 /** 오늘 해당하는 단계 = 시작일이 오늘 이전인 단계 중 마지막(목록 순서 기준) */
 export function currentPhaseId(list: PrepStep[], today = todayKST()): number | null {
   let cur: number | null = null;
-  for (const p of list) { const s = phaseStart(p.phase); if (s && s <= today) cur = p.id; }
+  for (const p of list) {
+    const s = phaseStart(p.phase);
+    if (s && s <= today) cur = p.id;
+  }
   return cur;
 }

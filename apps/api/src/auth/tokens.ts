@@ -2,8 +2,18 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 import { env } from "../common/env.js";
 
 // 최소 JWT(HS256) — 외부 라이브러리 없이 서명·검증
-export interface AccessClaims { sub: number; typ: "access"; tv: number; exp: number }
-export interface RefreshClaims { sub: number; typ: "refresh"; tv: number; exp: number }
+export interface AccessClaims {
+  sub: number;
+  typ: "access";
+  tv: number;
+  exp: number;
+}
+export interface RefreshClaims {
+  sub: number;
+  typ: "refresh";
+  tv: number;
+  exp: number;
+}
 
 const b64 = (b: Buffer | string) => Buffer.from(b).toString("base64url");
 const sign = (data: string) => createHmac("sha256", env.JWT_SECRET).update(data).digest();
@@ -24,5 +34,7 @@ export function verifyToken<T extends { exp: number; typ: string }>(token: strin
     const c = JSON.parse(Buffer.from(parts[1], "base64url").toString()) as T;
     if (c.typ !== typ || typeof c.exp !== "number" || c.exp < Date.now() / 1000) return null;
     return c;
-  } catch { return null; }
+  } catch {
+    return null;
+  }
 }

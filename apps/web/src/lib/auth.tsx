@@ -28,11 +28,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const qc = useQueryClient();
 
   useEffect(() => {
-    api.get<{ user: AuthUser | null }>("/auth/me")
+    api
+      .get<{ user: AuthUser | null }>("/auth/me")
       .then(async (r) => {
         if (r.user) return setUser(r.user);
         // access 만료 상태일 수 있으니 refresh 1회 시도
-        try { const x = await api.post<{ user: AuthUser }>("/auth/refresh"); setUser(x.user); } catch { setUser(null); }
+        try {
+          const x = await api.post<{ user: AuthUser }>("/auth/refresh");
+          setUser(x.user);
+        } catch {
+          setUser(null);
+        }
       })
       .catch(() => setUser(null))
       .finally(() => setReady(true));
@@ -40,15 +46,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     setSessionExpiredHandler(() => {
-      setUser((u) => { if (u) { toast.warning("세션이 만료되었습니다. 다시 로그인하세요."); setLoginOpen(true); } return null; });
+      setUser((u) => {
+        if (u) {
+          toast.warning("세션이 만료되었습니다. 다시 로그인하세요.");
+          setLoginOpen(true);
+        }
+        return null;
+      });
     });
   }, []);
 
-  const login = useCallback(async (username: string, password: string) => {
-    const r = await api.post<{ user: AuthUser }>("/auth/login", { username, password });
-    setUser(r.user);
-    qc.invalidateQueries();
-  }, [qc]);
+  const login = useCallback(
+    async (username: string, password: string) => {
+      const r = await api.post<{ user: AuthUser }>("/auth/login", { username, password });
+      setUser(r.user);
+      qc.invalidateQueries();
+    },
+    [qc],
+  );
   const logout = useCallback(async () => {
     await api.post("/auth/logout").catch(() => {});
     setUser(null);
@@ -69,18 +84,22 @@ export function useAuth() {
 /** 권한 확인 — 서버 registry.canWrite와 같은 규칙(서버가 최종 판단) */
 export function useCan() {
   const { user } = useAuth();
-  return useMemo(() => ({
-    user,
-    isAdmin: user?.role === "admin",
-    loggedIn: !!user,
-    canRead: (t: TableName) => !AUTH_TABLES.includes(t) || !!user,
-    /** row: 대상 행(수정·삭제) 또는 새 값(추가) */
-    canWrite: (t: TableName, row?: Record<string, any> | null) => {
-      if (!user) return false;
-      if (user.role === "admin") return true;
-      if (t === "posts") return !row || !row.id || row.authorId === user.id;
-      if (t === "volunteers" && user.role === "dept") return !!user.team && (!row || teamInfo(row as any).team === teamInfo({ team: user.team } as any).team);
-      return false;
-    },
-  }), [user]);
+  return useMemo(
+    () => ({
+      user,
+      isAdmin: user?.role === "admin",
+      loggedIn: !!user,
+      canRead: (t: TableName) => !AUTH_TABLES.includes(t) || !!user,
+      /** row: 대상 행(수정·삭제) 또는 새 값(추가) */
+      canWrite: (t: TableName, row?: Record<string, any> | null) => {
+        if (!user) return false;
+        if (user.role === "admin") return true;
+        if (t === "posts") return !row || !row.id || row.authorId === user.id;
+        if (t === "volunteers" && user.role === "dept")
+          return !!user.team && (!row || teamInfo(row as any).team === teamInfo({ team: user.team } as any).team);
+        return false;
+      },
+    }),
+    [user],
+  );
 }

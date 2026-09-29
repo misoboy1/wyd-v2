@@ -15,7 +15,16 @@ import { WydController } from "./wyd/wyd.controller.js";
 import { WydService } from "./wyd/wyd.service.js";
 
 @Module({
-  controllers: [AuthController, UsersController, TablesController, PublicController, VisitorsController, EventsController, UploadsController, WydController],
+  controllers: [
+    AuthController,
+    UsersController,
+    TablesController,
+    PublicController,
+    VisitorsController,
+    EventsController,
+    UploadsController,
+    WydController,
+  ],
   providers: [UsersCache, TablesService, EventsService, WydService, { provide: APP_GUARD, useClass: AuthGuard }],
 })
 export class AppModule {}

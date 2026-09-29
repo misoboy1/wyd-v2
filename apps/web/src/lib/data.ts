@@ -20,7 +20,7 @@ export function useTable<T extends TableName>(t: T) {
     enabled,
     staleTime: Infinity, // 변경은 SSE로 무효화
   });
-  const rows = useMemo(() => (enabled ? q.data ?? [] : []) as RowOf<T>[], [enabled, q.data]);
+  const rows = useMemo(() => (enabled ? (q.data ?? []) : []), [enabled, q.data]);
   return { rows, isLoading: enabled && q.isLoading, error: q.error as ApiError | null, enabled };
 }
 
@@ -31,11 +31,16 @@ export function useBootstrapData() {
   useEffect(() => {
     if (!ready) return;
     let alive = true;
-    api.get<Partial<Dataset>>("/data").then((d) => {
-      if (!alive) return;
-      for (const t of TABLE_NAMES) if (d[t]) qc.setQueryData(tableKey(t), d[t]);
-    }).catch(() => {});
-    return () => { alive = false; };
+    api
+      .get<Partial<Dataset>>("/data")
+      .then((d) => {
+        if (!alive) return;
+        for (const t of TABLE_NAMES) if (d[t]) qc.setQueryData(tableKey(t), d[t]);
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
   }, [qc, ready, user?.id]);
 }
 
@@ -46,32 +51,62 @@ export function useLiveUpdates() {
   const pending = useRef(new Set<string>());
   const timer = useRef<number | undefined>(undefined);
   useEffect(() => {
-    let es: EventSource | null = null, closed = false, hadError = false;
-    const flush = () => { pending.current.forEach((t) => qc.invalidateQueries({ queryKey: ["t", t] })); pending.current.clear(); };
+    let es: EventSource | null = null,
+      closed = false,
+      hadError = false;
+    const flush = () => {
+      pending.current.forEach((t) => qc.invalidateQueries({ queryKey: ["t", t] }));
+      pending.current.clear();
+    };
     const connect = () => {
       es = new EventSource("/api/events");
       es.addEventListener("change", (ev) => {
         try {
-          const e = JSON.parse((ev as MessageEvent).data) as { tables: string[] };
+          const e = JSON.parse(ev.data) as { tables: string[] };
           e.tables.forEach((t) => pending.current.add(t));
-          clearTimeout(timer.current); timer.current = window.setTimeout(flush, 250);
-        } catch { /* 무시 */ }
+          clearTimeout(timer.current);
+          timer.current = window.setTimeout(flush, 250);
+        } catch {
+          /* 무시 */
+        }
       });
-      es.onopen = () => { if (hadError) { hadError = false; qc.invalidateQueries({ queryKey: ["t"] }); } };
-      es.onerror = () => { hadError = true; if (es?.readyState === EventSource.CLOSED && !closed) setTimeout(connect, 3000); };
+      es.onopen = () => {
+        if (hadError) {
+          hadError = false;
+          qc.invalidateQueries({ queryKey: ["t"] });
+        }
+      };
+      es.onerror = () => {
+        hadError = true;
+        if (es?.readyState === EventSource.CLOSED && !closed) setTimeout(connect, 3000);
+      };
     };
     connect();
-    return () => { closed = true; es?.close(); clearTimeout(timer.current); };
+    return () => {
+      closed = true;
+      es?.close();
+      clearTimeout(timer.current);
+    };
   }, [qc, user?.id]);
 }
 
 // ── 충돌 안내(다른 사용자가 먼저 수정) ─────────────────────────────
-export interface ConflictInfo { table: TableName; mine: Record<string, any>; current: Record<string, any>; retry: (merged: Record<string, any>) => Promise<unknown> }
+export interface ConflictInfo {
+  table: TableName;
+  mine: Record<string, any>;
+  current: Record<string, any>;
+  retry: (merged: Record<string, any>) => Promise<unknown>;
+}
 type Listener = (c: ConflictInfo | null) => void;
 const conflictListeners = new Set<Listener>();
 export const conflictBus = {
   emit: (c: ConflictInfo | null) => conflictListeners.forEach((l) => l(c)),
-  on: (l: Listener) => { conflictListeners.add(l); return () => { conflictListeners.delete(l); }; },
+  on: (l: Listener) => {
+    conflictListeners.add(l);
+    return () => {
+      conflictListeners.delete(l);
+    };
+  },
 };
 
 function upsertInCache(qc: QueryClient, t: TableName, row: any) {
@@ -79,7 +114,9 @@ function upsertInCache(qc: QueryClient, t: TableName, row: any) {
     if (!old) return old;
     const i = old.findIndex((r) => r.id === row.id);
     if (i < 0) return [...old, row];
-    const next = old.slice(); next[i] = row; return next;
+    const next = old.slice();
+    next[i] = row;
+    return next;
   });
 }
 
@@ -116,15 +153,23 @@ export function useSave<T extends TableName>(t: T) {
         const current = e.detail.current;
         upsertInCache(qc, t, current);
         conflictBus.emit({
-          table: t, mine: row, current,
-          retry: (merged) => api.patch(`/t/${t}/${current.id}`, { ...merged, version: current.version }).then((r) => { upsertInCache(qc, t, r); return r; }),
+          table: t,
+          mine: row,
+          current,
+          retry: (merged) =>
+            api.patch(`/t/${t}/${current.id}`, { ...merged, version: current.version }).then((r) => {
+              upsertInCache(qc, t, r);
+              return r;
+            }),
         });
         return;
       }
       if (e instanceof ApiError && e.code === "NOTFOUND") qc.invalidateQueries({ queryKey: tableKey(t) });
       toast.error(errorMessage(e));
     },
-    onSuccess: (row) => { upsertInCache(qc, t, row); },
+    onSuccess: (row) => {
+      upsertInCache(qc, t, row);
+    },
   });
 }
 
@@ -132,7 +177,8 @@ export function useSave<T extends TableName>(t: T) {
 export function useRemove<T extends TableName>(t: T) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (row: { id: number; version?: number }) => api.del<{ cleared: number }>(`/t/${t}/${row.id}${row.version != null ? `?version=${row.version}` : ""}`),
+    mutationFn: (row: { id: number; version?: number }) =>
+      api.del<{ cleared: number }>(`/t/${t}/${row.id}${row.version != null ? `?version=${row.version}` : ""}`),
     onMutate: async (row) => {
       await qc.cancelQueries({ queryKey: tableKey(t) });
       const prev = qc.getQueryData<any[]>(tableKey(t));
@@ -153,9 +199,19 @@ export function useRemove<T extends TableName>(t: T) {
   });
 }
 
-export interface BulkResult { ok: boolean; row?: any; error?: string; code?: string }
+export interface BulkResult {
+  ok: boolean;
+  row?: any;
+  error?: string;
+  code?: string;
+}
 /** 일괄 저장(200행씩). 진행 상황 콜백. 결과는 입력 순서대로 */
-export async function bulkSave(qc: QueryClient, t: TableName, rows: any[], onProgress?: (done: number, total: number) => void): Promise<BulkResult[]> {
+export async function bulkSave(
+  qc: QueryClient,
+  t: TableName,
+  rows: any[],
+  onProgress?: (done: number, total: number) => void,
+): Promise<BulkResult[]> {
   const out: BulkResult[] = [];
   for (let i = 0; i < rows.length; i += 200) {
     const chunk = rows.slice(i, i + 200);
@@ -172,13 +228,19 @@ export async function bulkSave(qc: QueryClient, t: TableName, rows: any[], onPro
 }
 
 /** 배정 일괄 적용(자동 배정 등) — 서버가 행마다 재검사 */
-export async function assignStays(qc: QueryClient, changes: { id: number; version: number; facilityId: number | null; homestayId: number | null }[], onProgress?: (d: number, n: number) => void) {
+export async function assignStays(
+  qc: QueryClient,
+  changes: { id: number; version: number; facilityId: number | null; homestayId: number | null }[],
+  onProgress?: (d: number, n: number) => void,
+) {
   const out: BulkResult[] = [];
   for (let i = 0; i < changes.length; i += 200) {
     try {
       const r = await api.post<{ results: BulkResult[] }>("/visitors/assign", { changes: changes.slice(i, i + 200) });
       out.push(...r.results);
-    } catch (e) { changes.slice(i, i + 200).forEach(() => out.push({ ok: false, error: errorMessage(e) })); }
+    } catch (e) {
+      changes.slice(i, i + 200).forEach(() => out.push({ ok: false, error: errorMessage(e) }));
+    }
     onProgress?.(Math.min(i + 200, changes.length), changes.length);
   }
   await qc.invalidateQueries({ queryKey: tableKey("visitors") });
@@ -192,12 +254,16 @@ export async function unassignStays(qc: QueryClient, scope: "orphan" | "unconfir
 
 /** 공용 결과 요약 토스트 */
 export function toastBulk(label: string, res: BulkResult[]) {
-  const ok = res.filter((r) => r.ok).length, ng = res.length - ok;
+  const ok = res.filter((r) => r.ok).length,
+    ng = res.length - ok;
   if (!ng) toast.success(`${label}: ${ok.toLocaleString()}건 저장`);
   else {
     const reasons = new Map<string, number>();
     res.filter((r) => !r.ok).forEach((r) => reasons.set(r.error || "오류", (reasons.get(r.error || "오류") || 0) + 1));
-    const top = [...reasons.entries()].slice(0, 3).map(([m, n]) => `${m} (${n})`).join("\n");
+    const top = [...reasons.entries()]
+      .slice(0, 3)
+      .map(([m, n]) => `${m} (${n})`)
+      .join("\n");
     toast.warning(`${label}: 성공 ${ok} · 실패 ${ng}`, { description: top, duration: 10000 });
   }
 }

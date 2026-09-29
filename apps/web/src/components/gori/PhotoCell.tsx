@@ -34,7 +34,10 @@ export function GoriPhotoCell({ row, canEdit }: { row: Gori; canEdit: boolean })
 
   const upload = async (f: File) => {
     const err = checkFile(f);
-    if (err) { toast.error(err); return; }
+    if (err) {
+      toast.error(err);
+      return;
+    }
     const fd = new FormData();
     fd.append("file", f);
     setBusy(true);
@@ -48,12 +51,25 @@ export function GoriPhotoCell({ row, canEdit }: { row: Gori; canEdit: boolean })
         qc.invalidateQueries({ queryKey: tableKey("gori") });
         toast.error("다른 사용자가 먼저 수정했습니다. 새로 불러온 뒤 다시 올려 주세요.");
       } else toast.error("사진 업로드에 실패했습니다. (" + errorMessage(e) + ")");
-    } finally { setBusy(false); }
+    } finally {
+      setBusy(false);
+    }
   };
 
   const picker = canEdit && (
-    <input ref={input} type="file" accept="image/*,.heic,.heif" className="hidden" aria-hidden tabIndex={-1}
-      onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) void upload(f); }} />
+    <input
+      ref={input}
+      type="file"
+      accept="image/*,.heic,.heif"
+      className="hidden"
+      aria-hidden
+      tabIndex={-1}
+      onChange={(e) => {
+        const f = e.target.files?.[0];
+        e.target.value = "";
+        if (f) void upload(f);
+      }}
+    />
   );
 
   return (
@@ -61,22 +77,57 @@ export function GoriPhotoCell({ row, canEdit }: { row: Gori; canEdit: boolean })
       {picker}
       {src ? (
         failed ? (
-          <span className="inline-flex h-11 items-center gap-1 rounded-lg border border-dashed border-bad/50 bg-bad-soft px-2 text-[11.5px] text-bad" title="사진을 불러오지 못했습니다">
-            <ImageOff className="size-3.5" />불러오기 실패
+          <span
+            className="inline-flex h-11 items-center gap-1 rounded-lg border border-dashed border-bad/50 bg-bad-soft px-2 text-[11.5px] text-bad"
+            title="사진을 불러오지 못했습니다"
+          >
+            <ImageOff className="size-3.5" />
+            불러오기 실패
           </span>
         ) : (
-          <button type="button" onClick={() => setZoom(true)} className="shrink-0 overflow-hidden rounded-lg border border-line focus-visible:ring-3 focus-visible:ring-[var(--ring)]" aria-label={`${mdw(row.date)} ${row.org} 사진 크게 보기`}>
+          <button
+            type="button"
+            onClick={() => setZoom(true)}
+            className="shrink-0 overflow-hidden rounded-lg border border-line focus-visible:ring-3 focus-visible:ring-[var(--ring)]"
+            aria-label={`${mdw(row.date)} ${row.org} 사진 크게 보기`}
+          >
             <img src={src} alt="" loading="lazy" className="size-11 object-cover" onError={() => setBroken(src)} />
           </button>
         )
-      ) : !canEdit && <span className="text-ink-3">—</span>}
+      ) : (
+        !canEdit && <span className="text-ink-3">—</span>
+      )}
       {canEdit && (
-        <Button size="sm" variant={src ? "ghost" : "secondary"} loading={busy} onClick={() => input.current?.click()} aria-label={`${mdw(row.date)} 사진 ${src ? "변경" : "업로드"}`}>
-          {!busy && (src ? <RefreshCw /> : <Camera />)}{src ? "변경" : "업로드"}
+        <Button
+          size="sm"
+          variant={src ? "ghost" : "secondary"}
+          loading={busy}
+          onClick={() => input.current?.click()}
+          aria-label={`${mdw(row.date)} 사진 ${src ? "변경" : "업로드"}`}
+        >
+          {!busy && (src ? <RefreshCw /> : <Camera />)}
+          {src ? "변경" : "업로드"}
         </Button>
       )}
-      <Dialog open={zoom} onOpenChange={setZoom} size="lg" title={`${mdw(row.date)} · ${row.org}`} description={row.rep ? `대표: ${row.rep}` : undefined}>
-        {src && !failed && <img src={src} alt={`${row.org} 고리기도 사진`} className="mx-auto max-h-[70dvh] w-auto rounded-xl object-contain" onError={() => { setBroken(src); setZoom(false); toast.error("사진을 불러오지 못했습니다."); }} />}
+      <Dialog
+        open={zoom}
+        onOpenChange={setZoom}
+        size="lg"
+        title={`${mdw(row.date)} · ${row.org}`}
+        description={row.rep ? `대표: ${row.rep}` : undefined}
+      >
+        {src && !failed && (
+          <img
+            src={src}
+            alt={`${row.org} 고리기도 사진`}
+            className="mx-auto max-h-[70dvh] w-auto rounded-xl object-contain"
+            onError={() => {
+              setBroken(src);
+              setZoom(false);
+              toast.error("사진을 불러오지 못했습니다.");
+            }}
+          />
+        )}
       </Dialog>
     </div>
   );

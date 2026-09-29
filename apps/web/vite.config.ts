@@ -21,6 +21,10 @@ export default defineConfig({
   },
   build: {
     chunkSizeWarningLimit: 900,
-    rollupOptions: { output: { manualChunks: { react: ["react", "react-dom", "react-router"], query: ["@tanstack/react-query", "@tanstack/react-virtual"] } } },
+    rollupOptions: {
+      output: {
+        manualChunks: { react: ["react", "react-dom", "react-router"], query: ["@tanstack/react-query", "@tanstack/react-virtual"] },
+      },
+    },
   },
 });

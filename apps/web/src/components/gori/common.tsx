@@ -56,7 +56,10 @@ export function useWydSync() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: () => api.post<WydStatus | null>("/wyd-status/sync"),
-    onSuccess: (r) => { qc.setQueryData(wydKey, r); toast.success(r ? `동기화했습니다 (${r.date})` : "동기화했지만 받은 데이터가 없습니다."); },
+    onSuccess: (r) => {
+      qc.setQueryData(wydKey, r);
+      toast.success(r ? `동기화했습니다 (${r.date})` : "동기화했지만 받은 데이터가 없습니다.");
+    },
     onError: (e) => toast.error(errorMessage(e)),
   });
 }
@@ -72,19 +75,40 @@ export function RosaryCard({ compact, className }: { compact?: boolean; classNam
       <div className="flex items-start justify-between gap-2">
         <div className="text-[12.5px] font-semibold text-primary">📿 중계양업 묵주기도 봉헌</div>
         {isAdmin && (
-          <Button size="sm" variant="ghost" className="-mt-1 -mr-1 h-7 px-2 text-[12px]" loading={sync.isPending} onClick={() => sync.mutate()} aria-label="묵주기도 현황 지금 동기화">
+          <Button
+            size="sm"
+            variant="ghost"
+            className="-mt-1 -mr-1 h-7 px-2 text-[12px]"
+            loading={sync.isPending}
+            onClick={() => sync.mutate()}
+            aria-label="묵주기도 현황 지금 동기화"
+          >
             {!sync.isPending && <RefreshCw />}지금 동기화
           </Button>
         )}
       </div>
-      {isLoading ? <Skeleton className="mt-3 h-14" />
-        : !w ? <div className="mt-2 text-[13px] text-ink-3">아직 데이터 없음<br /><span className="text-[12px]">매일 아침 자동으로 공식 현황을 가져옵니다.</span></div>
-        : (<>
-          {w.churchTotal != null
-            ? <div className="mt-1.5 text-[26px] leading-tight font-bold tracking-tight text-primary tabular">{num(w.churchTotal)}<span className="text-[14px] font-semibold"> 단</span></div>
-            : <div className="mt-1.5 py-1 text-[13px] text-ink-3">중계양업 개별 수치는 다음 동기화 때 표시됩니다.</div>}
+      {isLoading ? (
+        <Skeleton className="mt-3 h-14" />
+      ) : !w ? (
+        <div className="mt-2 text-[13px] text-ink-3">
+          아직 데이터 없음
+          <br />
+          <span className="text-[12px]">매일 아침 자동으로 공식 현황을 가져옵니다.</span>
+        </div>
+      ) : (
+        <>
+          {w.churchTotal != null ? (
+            <div className="mt-1.5 text-[26px] leading-tight font-bold tracking-tight text-primary tabular">
+              {num(w.churchTotal)}
+              <span className="text-[14px] font-semibold"> 단</span>
+            </div>
+          ) : (
+            <div className="mt-1.5 py-1 text-[13px] text-ink-3">중계양업 개별 수치는 다음 동기화 때 표시됩니다.</div>
+          )}
           {compact ? (
-            <div className="mt-1 text-[12px] text-ink-3">전체 오늘 {num(w.today ?? 0)}단 · 진행률 {pct(w.progress)}%</div>
+            <div className="mt-1 text-[12px] text-ink-3">
+              전체 오늘 {num(w.today ?? 0)}단 · 진행률 {pct(w.progress)}%
+            </div>
           ) : (
             <div className="mt-3 border-t border-line pt-2">
               <div className="mb-1 text-[11.5px] font-semibold text-ink-3">전체 봉헌 / 목표 10억단</div>
@@ -97,15 +121,25 @@ export function RosaryCard({ compact, className }: { compact?: boolean; classNam
             </div>
           )}
           <div className="mt-auto pt-2 text-[11.5px] text-ink-3">갱신: {w.date || "-"}</div>
-        </>)}
+        </>
+      )}
       {!compact && (
-        <a className="mt-2 inline-flex items-center gap-1 text-[12.5px] font-medium text-primary hover:underline" href="https://wyd.catholic.or.kr/status.asp" target="_blank" rel="noopener noreferrer">
-          공식 현황 페이지<ExternalLink className="size-3" />
+        <a
+          className="mt-2 inline-flex items-center gap-1 text-[12.5px] font-medium text-primary hover:underline"
+          href="https://wyd.catholic.or.kr/status.asp"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          공식 현황 페이지
+          <ExternalLink className="size-3" />
         </a>
       )}
     </div>
   );
 }
 const Row = ({ k, v }: { k: string; v: string }) => (
-  <div className="flex justify-between py-1"><dt className="text-ink-2">{k}</dt><dd className="font-semibold text-ink tabular">{v}</dd></div>
+  <div className="flex justify-between py-1">
+    <dt className="text-ink-2">{k}</dt>
+    <dd className="font-semibold text-ink tabular">{v}</dd>
+  </div>
 );

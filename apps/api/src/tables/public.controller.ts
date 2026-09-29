@@ -17,10 +17,13 @@ export class PublicController {
   async ask(@Body() body: unknown, @Req() req: FastifyRequest) {
     const p = publicQuestionSchema.safeParse(body);
     if (!p.success) throw Invalid("질문자와 질문 내용을 입력하세요(질문자 40자, 질문 1000자 이내).");
-    const ip = clientIp(req), wait = qnaLimit.retryAfter(ip);
+    const ip = clientIp(req),
+      wait = qnaLimit.retryAfter(ip);
     if (wait) throw new ApiError("RATE_LIMIT", "질문이 너무 많습니다. 잠시 후 다시 등록하세요.", 429);
     qnaLimit.hit(ip);
-    const row = await this.svc.tx((tx) => this.svc.createIn(tx, "qna", { ...p.data, date: todayKST(), a: "", answered: false }, undefined, { skipAuth: true }));
+    const row = await this.svc.tx((tx) =>
+      this.svc.createIn(tx, "qna", { ...p.data, date: todayKST(), a: "", answered: false }, undefined, { skipAuth: true }),
+    );
     this.svc.events.emit(["qna"]);
     return row;
   }

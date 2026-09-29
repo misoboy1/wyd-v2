@@ -4,17 +4,60 @@ import { csvCell, todayKST } from "@wyd/shared";
 export function parsePaste(text: string): string[][] {
   text = String(text || "").replace(/\r\n?/g, "\n");
   let delim = ",";
-  { let q = false; for (let i = 0; i < text.length; i++) { const ch = text[i]; if (ch === '"') q = !q; else if (!q && ch === "\n") break; else if (!q && ch === "\t") { delim = "\t"; break; } } }
-  const rows: string[][] = []; let row: string[] = [], cur = "", q = false, atStart = true;
+  {
+    let q = false;
+    for (let i = 0; i < text.length; i++) {
+      const ch = text[i];
+      if (ch === '"') q = !q;
+      else if (!q && ch === "\n") break;
+      else if (!q && ch === "\t") {
+        delim = "\t";
+        break;
+      }
+    }
+  }
+  const rows: string[][] = [];
+  let row: string[] = [],
+    cur = "",
+    q = false,
+    atStart = true;
   for (let i = 0; i < text.length; i++) {
     const ch = text[i];
-    if (q) { if (ch === '"') { if (text[i + 1] === '"') { cur += '"'; i++; } else q = false; } else cur += ch; continue; }
-    if (ch === '"' && atStart) { q = true; atStart = false; continue; }
-    if (ch === delim) { row.push(cur); cur = ""; atStart = true; continue; }
-    if (ch === "\n") { row.push(cur); rows.push(row); row = []; cur = ""; atStart = true; continue; }
-    cur += ch; atStart = false;
+    if (q) {
+      if (ch === '"') {
+        if (text[i + 1] === '"') {
+          cur += '"';
+          i++;
+        } else q = false;
+      } else cur += ch;
+      continue;
+    }
+    if (ch === '"' && atStart) {
+      q = true;
+      atStart = false;
+      continue;
+    }
+    if (ch === delim) {
+      row.push(cur);
+      cur = "";
+      atStart = true;
+      continue;
+    }
+    if (ch === "\n") {
+      row.push(cur);
+      rows.push(row);
+      row = [];
+      cur = "";
+      atStart = true;
+      continue;
+    }
+    cur += ch;
+    atStart = false;
   }
-  if (cur !== "" || row.length) { row.push(cur); rows.push(row); }
+  if (cur !== "" || row.length) {
+    row.push(cur);
+    rows.push(row);
+  }
   return rows.filter((r) => r.some((c) => String(c).trim() !== "")).map((r) => r.map((c) => String(c).trim()));
 }
 
@@ -25,6 +68,8 @@ export function downloadCSV(name: string, headers: string[], rows: unknown[][]) 
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
   a.download = `${name}_${todayKST()}.csv`;
-  document.body.appendChild(a); a.click(); a.remove();
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 }

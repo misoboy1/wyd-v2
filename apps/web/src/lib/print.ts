@@ -1,18 +1,34 @@
 import { PARISH, todayKST } from "@wyd/shared";
 
-export interface PrintSection { heading?: string; note?: string; columns: string[]; rows: (string | number | null | undefined)[][] }
-const esc = (s: unknown) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
+export interface PrintSection {
+  heading?: string;
+  note?: string;
+  columns: string[];
+  rows: (string | number | null | undefined)[][];
+}
+const esc = (s: unknown) =>
+  String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
 
 /**
  * 인쇄용 문서(A4) — 새 창 대신 숨은 iframe에 그려 바로 인쇄 대화상자.
  * 모든 값은 이스케이프(기존 innerHTML 방식의 XSS 위험 제거)
  */
-export function printDocument(title: string, sections: PrintSection[], opts: { kpis?: [string, string | number][]; subtitle?: string } = {}) {
-  const kpi = opts.kpis?.length ? `<div class="kpis">${opts.kpis.map(([l, v]) => `<div class="kpi"><div class="l">${esc(l)}</div><div class="v">${esc(v)}</div></div>`).join("")}</div>` : "";
-  const body = sections.map((s) => `
+export function printDocument(
+  title: string,
+  sections: PrintSection[],
+  opts: { kpis?: [string, string | number][]; subtitle?: string } = {},
+) {
+  const kpi = opts.kpis?.length
+    ? `<div class="kpis">${opts.kpis.map(([l, v]) => `<div class="kpi"><div class="l">${esc(l)}</div><div class="v">${esc(v)}</div></div>`).join("")}</div>`
+    : "";
+  const body = sections
+    .map(
+      (s) => `
     ${s.heading ? `<h2>${esc(s.heading)}</h2>` : ""}${s.note ? `<p class="note">${esc(s.note)}</p>` : ""}
     <table><thead><tr>${s.columns.map((c) => `<th>${esc(c)}</th>`).join("")}</tr></thead>
-    <tbody>${s.rows.map((r) => `<tr>${r.map((c) => `<td>${esc(c)}</td>`).join("")}</tr>`).join("") || `<tr><td colspan="${s.columns.length}" class="empty">항목 없음</td></tr>`}</tbody></table>`).join("");
+    <tbody>${s.rows.map((r) => `<tr>${r.map((c) => `<td>${esc(c)}</td>`).join("")}</tr>`).join("") || `<tr><td colspan="${s.columns.length}" class="empty">항목 없음</td></tr>`}</tbody></table>`,
+    )
+    .join("");
   const html = `<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>${esc(title)}</title><style>
     @page{size:A4;margin:14mm}*{box-sizing:border-box}
     body{font-family:"Pretendard","Malgun Gothic",system-ui,sans-serif;color:#111827;font-size:11px;margin:0}
@@ -30,6 +46,12 @@ export function printDocument(title: string, sections: PrintSection[], opts: { k
   f.style.cssText = "position:fixed;right:0;bottom:0;width:0;height:0;border:0";
   document.body.appendChild(f);
   const d = f.contentDocument!;
-  d.open(); d.write(html); d.close();
-  setTimeout(() => { f.contentWindow?.focus(); f.contentWindow?.print(); setTimeout(() => f.remove(), 2000); }, 250);
+  d.open();
+  d.write(html);
+  d.close();
+  setTimeout(() => {
+    f.contentWindow?.focus();
+    f.contentWindow?.print();
+    setTimeout(() => f.remove(), 2000);
+  }, 250);
 }

@@ -12,7 +12,9 @@ export function stayIndexOf(v: Visitor[], f: Facility[], h: Homestay[]): StayInd
 
 /** 방문자·시설·가정 + 점유 인덱스 */
 export function useStayIndex() {
-  const v = useTable("visitors"), f = useTable("facilities"), h = useTable("homestays");
+  const v = useTable("visitors"),
+    f = useTable("facilities"),
+    h = useTable("homestays");
   const I = stayIndexOf(v.rows, f.rows, h.rows);
   return { I, visitors: v.rows, facilities: f.rows, homestays: h.rows, isLoading: v.isLoading || f.isLoading || h.isLoading };
 }

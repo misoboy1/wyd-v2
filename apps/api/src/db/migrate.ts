@@ -10,6 +10,13 @@ export async function runMigrations() {
 }
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1])) {
-  runMigrations().then(() => { console.log("migrations applied"); return sqlClient.end(); })
-    .catch((e) => { console.error(e); process.exit(1); });
+  runMigrations()
+    .then(() => {
+      console.log("migrations applied");
+      return sqlClient.end();
+    })
+    .catch((e) => {
+      console.error(e);
+      process.exit(1);
+    });
 }

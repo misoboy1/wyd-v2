@@ -3,16 +3,32 @@
 const A = process.env.API ?? "http://127.0.0.1:3000/api";
 let cookie = "";
 const call = async (method, path, body, opts = {}) => {
-  const r = await fetch(A + path, { method, headers: { ...(body ? { "content-type": "application/json" } : {}), "x-wyd": "1", cookie: opts.cookie ?? cookie }, body: body ? JSON.stringify(body) : undefined });
+  const r = await fetch(A + path, {
+    method,
+    headers: { ...(body ? { "content-type": "application/json" } : {}), "x-wyd": "1", cookie: opts.cookie ?? cookie },
+    body: body ? JSON.stringify(body) : undefined,
+  });
   const sc = r.headers.getSetCookie?.() ?? [];
   if (sc.length && !opts.cookie) cookie = sc.map((c) => c.split(";")[0]).join("; ");
-  let j = null; try { j = await r.json(); } catch {}
+  let j = null;
+  try {
+    j = await r.json();
+  } catch {}
   return { status: r.status, body: j };
 };
 let fail = 0;
-const ok = (cond, msg, extra) => { console.log(`${cond ? "✓" : "✗"} ${msg}`); if (!cond) { fail++; if (extra !== undefined) console.log("   →", JSON.stringify(extra).slice(0, 300)); } };
+const ok = (cond, msg, extra) => {
+  console.log(`${cond ? "✓" : "✗"} ${msg}`);
+  if (!cond) {
+    fail++;
+    if (extra !== undefined) console.log("   →", JSON.stringify(extra).slice(0, 300));
+  }
+};
 
-const login = await call("POST", "/auth/login", { username: process.env.ADMIN_USERNAME ?? "admin", password: process.env.ADMIN_PASSWORD ?? "admin1234!" });
+const login = await call("POST", "/auth/login", {
+  username: process.env.ADMIN_USERNAME ?? "admin",
+  password: process.env.ADMIN_PASSWORD ?? "admin1234!",
+});
 ok(login.status === 200, "관리자 로그인");
 
 // 1) 낙관적 잠금
@@ -34,18 +50,30 @@ const pol = await call("PATCH", `/t/facilities/${occupied.id}`, { version: occup
 ok(pol.status === 422 && pol.body.error === "CAPACITY", "숙박자 있는 교리실 '점검중' 전환 차단", pol.body);
 
 // 4) 동시 배정: 정원 4 교리실에 50명 동시 요청 → 정확히 4명만 성공
-const room = (await call("POST", "/t/facilities", { name: "동시성테스트실-" + Date.now(), type: "숙박 교리실", cap: 4, gender: "남", status: "가용" })).body;
+const room = (
+  await call("POST", "/t/facilities", { name: "동시성테스트실-" + Date.now(), type: "숙박 교리실", cap: 4, gender: "남", status: "가용" })
+).body;
 const people = [];
-for (let i = 0; i < 50; i++) people.push((await call("POST", "/t/visitors", { name: "동시" + i, sex: "남", stay: "8/2–8/9", note: "smoke" })).body);
+for (let i = 0; i < 50; i++)
+  people.push((await call("POST", "/t/visitors", { name: "동시" + i, sex: "남", stay: "8/2–8/9", note: "smoke" })).body);
 const res = await Promise.all(people.map((p) => call("PATCH", `/t/visitors/${p.id}`, { version: p.version, facilityId: room.id })));
-const okN = res.filter((r) => r.status === 200).length, stayN = res.filter((r) => r.body?.error === "STAY").length;
+const okN = res.filter((r) => r.status === 200).length,
+  stayN = res.filter((r) => r.body?.error === "STAY").length;
 ok(okN === 4 && stayN === 46, `동시 50건 → 성공 ${okN} / 정원 초과 거부 ${stayN} (기대 4/46)`);
 
 // 5) 일괄 배정 API도 같은 규칙
-const room2 = (await call("POST", "/t/facilities", { name: "일괄테스트실-" + Date.now(), type: "숙박 교리실", cap: 3, gender: "공용", status: "가용" })).body;
+const room2 = (
+  await call("POST", "/t/facilities", { name: "일괄테스트실-" + Date.now(), type: "숙박 교리실", cap: 3, gender: "공용", status: "가용" })
+).body;
 const fresh = (await call("GET", "/t/visitors")).body.filter((x) => x.note === "smoke" && !x.facilityId).slice(0, 5);
-const asg = await call("POST", "/visitors/assign", { changes: fresh.map((p) => ({ id: p.id, version: p.version, facilityId: room2.id, homestayId: null })) });
-ok(asg.body.results.filter((r) => r.ok).length === 3, "일괄 배정 5명 → 정원 3명만 성공, 나머지 행별 오류", asg.body.results.map((r) => r.code));
+const asg = await call("POST", "/visitors/assign", {
+  changes: fresh.map((p) => ({ id: p.id, version: p.version, facilityId: room2.id, homestayId: null })),
+});
+ok(
+  asg.body.results.filter((r) => r.ok).length === 3,
+  "일괄 배정 5명 → 정원 3명만 성공, 나머지 행별 오류",
+  asg.body.results.map((r) => r.code),
+);
 
 // 6) 시설 삭제 → 배정 방문자 자동 미배정
 const del = await call("DELETE", `/t/facilities/${room.id}?version=${room.version}`);

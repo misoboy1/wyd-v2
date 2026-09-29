@@ -52,13 +52,17 @@ export async function checkHostPolicy(tx: Tx, table: "facilities" | "homestays",
   if (!guests.length) return;
   const seated: { sex: string }[] = [];
   for (const g of guests) {
-    const r = table === "facilities"
-      ? roomFit(after as unknown as Facility, g.sex, seated)
-      : hsFit(after as unknown as Homestay, g.sex, seated, g.stay);
+    const r =
+      table === "facilities"
+        ? roomFit(after as unknown as Facility, g.sex, seated)
+        : hsFit(after as unknown as Homestay, g.sex, seated, g.stay);
     if (!r.avail) {
-      const why = r.reason === "점검중" || r.reason === "퇴실" ? `숙박자 ${guests.length}명이 있어 '${r.reason}'(으)로 바꿀 수 없습니다. 먼저 배정을 옮기세요.`
-        : r.reason === "숙박불가" ? `숙박자 ${guests.length}명이 있어 숙박 시설이 아닌 유형으로 바꿀 수 없습니다.`
-        : `현재 숙박자 ${guests.length}명과 맞지 않습니다(${r.reason}). 먼저 배정을 조정하세요.`;
+      const why =
+        r.reason === "점검중" || r.reason === "퇴실"
+          ? `숙박자 ${guests.length}명이 있어 '${r.reason}'(으)로 바꿀 수 없습니다. 먼저 배정을 옮기세요.`
+          : r.reason === "숙박불가"
+            ? `숙박자 ${guests.length}명이 있어 숙박 시설이 아닌 유형으로 바꿀 수 없습니다.`
+            : `현재 숙박자 ${guests.length}명과 맞지 않습니다(${r.reason}). 먼저 배정을 조정하세요.`;
       throw Capacity(why);
     }
     seated.push(g);

@@ -8,8 +8,16 @@ const dir = path.resolve(".data/pg");
 const pg = new EmbeddedPostgres({ databaseDir: dir, user: "wyd", password: "wyd", port: 54329, persistent: true });
 if (!existsSync(path.join(dir, "PG_VERSION"))) await pg.initialise();
 await pg.start();
-try { await pg.createDatabase("wyd"); } catch { /* 이미 있음 */ }
+try {
+  await pg.createDatabase("wyd");
+} catch {
+  /* 이미 있음 */
+}
 console.log("dev postgres ready: postgres://wyd:wyd@localhost:54329/wyd");
-const stop = async () => { await pg.stop(); process.exit(0); };
-process.on("SIGINT", stop); process.on("SIGTERM", stop);
+const stop = async () => {
+  await pg.stop();
+  process.exit(0);
+};
+process.on("SIGINT", stop);
+process.on("SIGTERM", stop);
 setInterval(() => {}, 1 << 30);

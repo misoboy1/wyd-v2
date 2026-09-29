@@ -27,10 +27,21 @@ const Gori = lazy(() => import("@/pages/Gori"));
 const Users = lazy(() => import("@/pages/Users"));
 const NotFound = lazy(() => import("@/pages/NotFound"));
 
-function Live() { useBootstrapData(); useLiveUpdates(); return null; }
-const Loading = () => <div className="space-y-3"><Skeleton className="h-9 w-56" /><Skeleton className="h-28" /><Skeleton className="h-64" /></div>;
-const P = ({ children, auth, roles }: { children: ReactNode; auth?: boolean; roles?: string[] }) =>
-  <Suspense fallback={<Loading />}>{auth ? <RequireAuth roles={roles}>{children}</RequireAuth> : children}</Suspense>;
+function Live() {
+  useBootstrapData();
+  useLiveUpdates();
+  return null;
+}
+const Loading = () => (
+  <div className="space-y-3">
+    <Skeleton className="h-9 w-56" />
+    <Skeleton className="h-28" />
+    <Skeleton className="h-64" />
+  </div>
+);
+const P = ({ children, auth, roles }: { children: ReactNode; auth?: boolean; roles?: string[] }) => (
+  <Suspense fallback={<Loading />}>{auth ? <RequireAuth roles={roles}>{children}</RequireAuth> : children}</Suspense>
+);
 
 export function App() {
   return (
@@ -40,21 +51,126 @@ export function App() {
           <Live />
           <Routes>
             <Route element={<AppShell />}>
-              <Route index element={<P><Dashboard /></P>} />
-              <Route path="prep" element={<P><Prep /></P>} />
-              <Route path="schedule" element={<P><Schedule /></P>} />
-              <Route path="visitors" element={<P auth><Visitors /></P>} />
-              <Route path="facilities" element={<P auth><Facilities /></P>} />
-              <Route path="homestays" element={<P auth><Homestays /></P>} />
-              <Route path="org" element={<P auth><Org /></P>} />
-              <Route path="volunteers" element={<P auth><Volunteers /></P>} />
-              <Route path="notices" element={<P><Notices /></P>} />
-              <Route path="posts" element={<P auth><Posts /></P>} />
-              <Route path="qna" element={<P><Qna /></P>} />
-              <Route path="places" element={<P><Places /></P>} />
-              <Route path="gori" element={<P><Gori /></P>} />
-              <Route path="admin/users" element={<P auth roles={["admin"]}><Users /></P>} />
-              <Route path="*" element={<P><NotFound /></P>} />
+              <Route
+                index
+                element={
+                  <P>
+                    <Dashboard />
+                  </P>
+                }
+              />
+              <Route
+                path="prep"
+                element={
+                  <P>
+                    <Prep />
+                  </P>
+                }
+              />
+              <Route
+                path="schedule"
+                element={
+                  <P>
+                    <Schedule />
+                  </P>
+                }
+              />
+              <Route
+                path="visitors"
+                element={
+                  <P auth>
+                    <Visitors />
+                  </P>
+                }
+              />
+              <Route
+                path="facilities"
+                element={
+                  <P auth>
+                    <Facilities />
+                  </P>
+                }
+              />
+              <Route
+                path="homestays"
+                element={
+                  <P auth>
+                    <Homestays />
+                  </P>
+                }
+              />
+              <Route
+                path="org"
+                element={
+                  <P auth>
+                    <Org />
+                  </P>
+                }
+              />
+              <Route
+                path="volunteers"
+                element={
+                  <P auth>
+                    <Volunteers />
+                  </P>
+                }
+              />
+              <Route
+                path="notices"
+                element={
+                  <P>
+                    <Notices />
+                  </P>
+                }
+              />
+              <Route
+                path="posts"
+                element={
+                  <P auth>
+                    <Posts />
+                  </P>
+                }
+              />
+              <Route
+                path="qna"
+                element={
+                  <P>
+                    <Qna />
+                  </P>
+                }
+              />
+              <Route
+                path="places"
+                element={
+                  <P>
+                    <Places />
+                  </P>
+                }
+              />
+              <Route
+                path="gori"
+                element={
+                  <P>
+                    <Gori />
+                  </P>
+                }
+              />
+              <Route
+                path="admin/users"
+                element={
+                  <P auth roles={["admin"]}>
+                    <Users />
+                  </P>
+                }
+              />
+              <Route
+                path="*"
+                element={
+                  <P>
+                    <NotFound />
+                  </P>
+                }
+              />
             </Route>
           </Routes>
           <ConflictDialog />

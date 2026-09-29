@@ -44,7 +44,7 @@ services:
     volumes:
       - uploads:/srv/uploads
     mem_limit: 256m
-    networks: [internal, edge]   # edge: 묵주기도 현황 수집용 외부 접속(포트는 열지 않음)
+    networks: [internal, edge] # edge: 묵주기도 현황 수집용 외부 접속(포트는 열지 않음)
 
   web:
     build: { context: ., dockerfile: apps/web/Dockerfile }
@@ -99,5 +99,5 @@ volumes:
 
 networks:
   internal:
-    internal: true   # DB·WAS는 외부와 단절
+    internal: true # DB·WAS는 외부와 단절
   edge:
