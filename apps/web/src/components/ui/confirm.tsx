@@ -16,7 +16,7 @@ let push: ((p: Pending) => void) | null = null;
 /** await confirm({...}) → true/false */
 export function confirm(o: Opts): Promise<boolean> {
   return new Promise((resolve) => {
-    if (!push) return resolve(window.confirm(String(o.title)));
+    if (!push) return resolve(window.confirm(typeof o.title === "string" ? o.title : "계속할까요?"));
     push({ ...o, resolve });
   });
 }

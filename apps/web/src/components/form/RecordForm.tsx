@@ -37,7 +37,7 @@ function PickInput({ value, onChange, opts }: { value: string; onChange: (v: str
 /** 여러 개 선택(슬래시로 저장: "영어/스페인어") */
 function PicksInput({ value, onChange, opts }: { value: string; onChange: (v: string) => void; opts: string[] }) {
   const list = String(value || "")
-    .split(/[\/,]/)
+    .split(/[/,]/)
     .map((s) => s.trim())
     .filter(Boolean);
   const [extra, setExtra] = useState("");

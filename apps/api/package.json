@@ -20,7 +20,6 @@
     "@fastify/cookie": "^11.1.0",
     "@fastify/helmet": "^13.1.0",
     "@fastify/multipart": "^10.1.0",
-    "@fastify/static": "^9.0.0",
     "@nestjs/common": "^12.1.0",
     "@nestjs/core": "^12.1.0",
     "@nestjs/platform-fastify": "^12.1.0",
@@ -35,6 +34,7 @@
     "zod": "^4.1.0"
   },
   "devDependencies": {
+    "@fastify/static": "^9.0.0",
     "@types/node": "^22.0.0",
     "drizzle-kit": "^0.31.0",
     "embedded-postgres": "^18.4.0-beta.17",

@@ -153,7 +153,7 @@ function UserButton() {
 }
 
 /** 보호된 화면: 비로그인이면 안내 + 로그인 버튼 */
-export function RequireAuth({ children, roles }: { children: ReactNode; roles?: string[] }) {
+export function RequireAuth({ children, roles }: { children: ReactNode; roles?: readonly string[] }) {
   const { user, ready, setLoginOpen } = useAuth();
   if (!ready) return null;
   if (!user || (roles && !roles.includes(user.role))) {

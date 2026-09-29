@@ -192,7 +192,7 @@ export default function Visitors() {
     editable,
     onEdit: (row) => setEdit({ row }),
     onRoom: setRoomView,
-    onHs: (id) => navigate(`/homestays?focus=${id}&from=visitors`),
+    onHs: (id) => void navigate(`/homestays?focus=${id}&from=visitors`),
   });
 
   const exportCsv = (rows: Visitor[], suffix = "") =>

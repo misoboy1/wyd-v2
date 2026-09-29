@@ -15,7 +15,7 @@ import {
   ShieldCheck,
   type LucideIcon,
 } from "lucide-react";
-import type { Role } from "@wyd/shared";
+import { VOLUNTEER_VIEW_ROLES, type Role } from "@wyd/shared";
 
 export interface NavItem {
   path: string;
@@ -23,7 +23,7 @@ export interface NavItem {
   en: string;
   icon: LucideIcon;
   auth?: boolean;
-  roles?: Role[];
+  roles?: readonly Role[];
 }
 export interface NavGroup {
   label: string;
@@ -51,8 +51,8 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     label: "봉사단",
     items: [
-      { path: "/org", label: "조직도", en: "Organization", icon: Network, auth: true },
-      { path: "/volunteers", label: "봉사자 명단", en: "Volunteers", icon: HandHeart, auth: true },
+      { path: "/org", label: "조직도", en: "Organization", icon: Network, auth: true, roles: VOLUNTEER_VIEW_ROLES },
+      { path: "/volunteers", label: "봉사자 명단", en: "Volunteers", icon: HandHeart, auth: true, roles: VOLUNTEER_VIEW_ROLES },
     ],
   },
   {

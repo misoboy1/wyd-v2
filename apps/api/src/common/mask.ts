@@ -1,13 +1,15 @@
 // 연락처·주소 가림 (권한 없는 열람자용) — 기존 Code.gs maskTel/maskAddr 기준
+import { toStr } from "@wyd/shared";
+
 export const MASK = "••••";
 export function maskTel(v: unknown): string {
-  const s = String(v ?? "");
+  const s = toStr(v);
   if (!s) return s;
   const d = s.replace(/\D/g, "");
   return d.length >= 4 ? `${MASK}-${d.slice(-4)}` : MASK;
 }
 export function maskAddr(v: unknown): string {
-  const s = String(v ?? "").trim();
+  const s = toStr(v).trim();
   if (!s) return s;
   const t = s.split(/\s+/);
   return t.slice(0, Math.min(2, t.length)).join(" ") + " " + MASK;

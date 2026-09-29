@@ -2,6 +2,7 @@
 // 프론트(후보 표시·자동 배정 미리보기)와 서버(트랜잭션 재검사)가 같은 함수를 사용한다.
 import type { Facility, Homestay, Visitor } from "./types.js";
 import { hsCaps, isRRoom, isSleepRoom, periodFits, reqSex, cmpStr, VIRTUAL } from "./content.js";
+import { toStr } from "./text.js";
 
 export interface FitResult {
   avail: boolean;
@@ -191,7 +192,7 @@ export interface AssignPlan {
 }
 export const aaLangs = (s: string) =>
   String(s || "")
-    .split(/[\/,·\s]+/)
+    .split(/[/,·\s]+/)
     .map((x) => x.trim())
     .filter((x) => x && x !== "한국어");
 const isVirtualVisitor = (v: Visitor) => String(v.note || "").includes(VIRTUAL.visMark);
@@ -373,14 +374,14 @@ export function planAutoAssign(visitors: Visitor[], facilities: Facility[], home
 
 /** CSV 셀 보호(수식 시작 문자·줄바꿈) — 기존 csvCell과 동일 */
 export function csvCell(v: unknown): string {
-  let s = v == null ? "" : String(v);
+  let s = toStr(v);
   if (/^[=+@\t\r]/.test(s) || (/^-/.test(s) && !/^-?\d+(\.\d+)?$/.test(s))) s = "'" + s;
   return /[",\n\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
 }
 
 /** 날짜 정규화: ISO 타임스탬프 → KST YYYY-MM-DD, 그 외는 그대로 */
 export function normDate(v: unknown): string {
-  const s = String(v ?? "").trim();
+  const s = toStr(v).trim();
   if (/^\d{4}-\d{2}-\d{2}T/.test(s)) {
     const d = new Date(s);
     if (!isNaN(d.getTime()))

@@ -2,6 +2,7 @@ import { lazy, Suspense, type ReactNode } from "react";
 import { BrowserRouter, Route, Routes } from "react-router";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "sonner";
+import { VOLUNTEER_VIEW_ROLES } from "@wyd/shared";
 import { AuthProvider } from "@/lib/auth";
 import { useBootstrapData, useLiveUpdates } from "@/lib/data";
 import { AppShell, RequireAuth } from "@/components/layout/AppShell";
@@ -39,7 +40,7 @@ const Loading = () => (
     <Skeleton className="h-64" />
   </div>
 );
-const P = ({ children, auth, roles }: { children: ReactNode; auth?: boolean; roles?: string[] }) => (
+const P = ({ children, auth, roles }: { children: ReactNode; auth?: boolean; roles?: readonly string[] }) => (
   <Suspense fallback={<Loading />}>{auth ? <RequireAuth roles={roles}>{children}</RequireAuth> : children}</Suspense>
 );
 
@@ -102,7 +103,7 @@ export function App() {
               <Route
                 path="org"
                 element={
-                  <P auth>
+                  <P auth roles={VOLUNTEER_VIEW_ROLES}>
                     <Org />
                   </P>
                 }
@@ -110,7 +111,7 @@ export function App() {
               <Route
                 path="volunteers"
                 element={
-                  <P auth>
+                  <P auth roles={VOLUNTEER_VIEW_ROLES}>
                     <Volunteers />
                   </P>
                 }

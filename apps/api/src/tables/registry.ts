@@ -1,6 +1,6 @@
 // 테이블 레지스트리 — 테이블별 스키마·읽기/쓰기 권한·가림 규칙을 한 곳에서 정의
 import type { PgTable } from "drizzle-orm/pg-core";
-import { schemas, teamInfo, type TableName } from "@wyd/shared";
+import { schemas, teamInfo, VOLUNTEER_VIEW_ROLES, type TableName } from "@wyd/shared";
 import type { z } from "zod";
 import * as S from "../db/schema.js";
 import type { AuthUser } from "../common/auth-user.js";
@@ -52,6 +52,8 @@ export const REGISTRY: Record<TableName, TableDef> = {
     label: "봉사자",
     // 분과 책임자: 자기 팀 봉사자만 추가·수정·삭제(다른 팀으로 옮기기 불가)
     canWrite: (u, b, a) => u.role === "dept" && sameTeam(u, b) && sameTeam(u, a),
+    // 홈스테이 가정 계정은 봉사자 명단(연락처 포함)을 받지 않음 — 화면에서 숨기는 것만으로는 보호가 안 됨(SEC-01)
+    scope: (u) => (VOLUNTEER_VIEW_ROLES.includes(u.role) ? null : () => false),
   },
   officers: {
     table: S.officers,

@@ -55,7 +55,7 @@ export function useLiveUpdates() {
       closed = false,
       hadError = false;
     const flush = () => {
-      pending.current.forEach((t) => qc.invalidateQueries({ queryKey: ["t", t] }));
+      pending.current.forEach((t) => void qc.invalidateQueries({ queryKey: ["t", t] }));
       pending.current.clear();
     };
     const connect = () => {
@@ -73,7 +73,7 @@ export function useLiveUpdates() {
       es.onopen = () => {
         if (hadError) {
           hadError = false;
-          qc.invalidateQueries({ queryKey: ["t"] });
+          void qc.invalidateQueries({ queryKey: ["t"] });
         }
       };
       es.onerror = () => {
@@ -164,7 +164,7 @@ export function useSave<T extends TableName>(t: T) {
         });
         return;
       }
-      if (e instanceof ApiError && e.code === "NOTFOUND") qc.invalidateQueries({ queryKey: tableKey(t) });
+      if (e instanceof ApiError && e.code === "NOTFOUND") void qc.invalidateQueries({ queryKey: tableKey(t) });
       toast.error(errorMessage(e));
     },
     onSuccess: (row) => {
@@ -188,11 +188,11 @@ export function useRemove<T extends TableName>(t: T) {
     onError: (e, _row, ctx) => {
       if (ctx?.prev) qc.setQueryData(tableKey(t), ctx.prev);
       toast.error(errorMessage(e));
-      if (e instanceof ApiError && e.code === "CONFLICT") qc.invalidateQueries({ queryKey: tableKey(t) });
+      if (e instanceof ApiError && e.code === "CONFLICT") void qc.invalidateQueries({ queryKey: tableKey(t) });
     },
     onSuccess: (r) => {
       if (t === "facilities" || t === "homestays") {
-        qc.invalidateQueries({ queryKey: tableKey("visitors") });
+        void qc.invalidateQueries({ queryKey: tableKey("visitors") });
         if (r?.cleared) toast.info(`배정되어 있던 방문자 ${r.cleared}명은 '미배정'으로 바뀌었습니다.`);
       }
     },

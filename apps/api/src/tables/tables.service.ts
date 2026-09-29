@@ -127,8 +127,9 @@ export class TablesService {
   async bulk(name: TableName, rows: Row[], user?: AuthUser): Promise<WriteResult[]> {
     if (!Array.isArray(rows)) throw Invalid("rows 배열이 필요합니다.");
     if (rows.length > BULK_MAX) throw Invalid(`한 번에 최대 ${BULK_MAX}행까지 저장할 수 있습니다.`);
-    const results: WriteResult[] = [];
-    await this.tx(async (tx) => {
+    // 결과 배열은 트랜잭션 콜백 안에서 만든다 — 교착으로 tx()가 재시도하면 이전 시도의 결과를 버려야 함
+    const results = await this.tx(async (tx) => {
+      const acc: WriteResult[] = [];
       // 교착 방지: 수정 대상 행을 id 순으로 먼저 잠금
       const def = REGISTRY[name];
       const ids = rows
@@ -166,14 +167,15 @@ export class TablesService {
           const row = await tx.transaction(async (sp) =>
             r.id ? this.updateIn(sp, name, Number(r.id), r, user) : this.createIn(sp, name, r, user),
           );
-          results.push({ ok: true, row });
+          acc.push({ ok: true, row });
         } catch (e) {
           const err = mapDbError(e);
           if (err instanceof ApiError)
-            results.push({ ok: false, code: err.code, error: (err.getResponse() as Row).message, detail: err.detail });
+            acc.push({ ok: false, code: err.code, error: (err.getResponse() as Row).message, detail: err.detail });
           else throw err;
         }
       }
+      return acc;
     });
     if (results.some((r) => r.ok)) this.events.emit([name], user?.id);
     return results;
@@ -224,7 +226,7 @@ export class TablesService {
     const T = def.table as any;
     if (!Number.isInteger(id) || id <= 0) throw Invalid("잘못된 id");
     const [cur] = (await tx.select().from(T).where(eq(T.id, id)).for("update")) as Row[];
-    if (!cur) throw NotFound(def.label);
+    this.assertRowAccess(def, user, cur, "수정");
     if (patch.version == null) throw Invalid("version이 필요합니다(동시 수정 확인용).");
     if (Number(patch.version) !== cur.version) {
       throw Conflict(out(name === "schedule" ? (await this.attachSlots([cur], tx))[0] : cur));
@@ -249,11 +251,22 @@ export class TablesService {
     return out(name === "schedule" ? (await this.attachSlots([row], tx))[0] : row);
   }
 
+  /**
+   * 행을 보여 주기 전(Conflict 응답은 행 전체를 담음) 접근 확인.
+   * 읽기 범위 밖이면 존재 자체를 숨기고(NOTFOUND), 쓰기 권한이 없으면 FORBIDDEN.
+   */
+  private assertRowAccess(def: TableDef, user: AuthUser | undefined, cur: Row | undefined, verb: string): asserts cur is Row {
+    if (!cur) throw NotFound(def.label);
+    const scope = user && def.scope?.(user);
+    if (scope && !scope(cur)) throw NotFound(def.label);
+    if (!canWrite(def, user, cur, cur)) throw Forbidden(`${def.label} ${verb} 권한이 없습니다.`);
+  }
+
   async removeIn(tx: Tx, name: TableName, id: number, version: number | undefined, user?: AuthUser) {
     const def = REGISTRY[name];
     const T = def.table as any;
     const [cur] = (await tx.select().from(T).where(eq(T.id, id)).for("update")) as Row[];
-    if (!cur) throw NotFound(def.label);
+    this.assertRowAccess(def, user, cur, "삭제");
     if (version != null && Number(version) !== cur.version) throw Conflict(out(cur));
     if (!canWrite(def, user, cur, null)) throw Forbidden(`${def.label} 삭제 권한이 없습니다.`);
     // 가정·시설 삭제 → 배정 방문자는 FK(ON DELETE SET NULL)로 자동 미배정. 몇 명인지 응답에 포함

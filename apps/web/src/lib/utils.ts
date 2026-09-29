@@ -1,17 +1,18 @@
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
+import { toStr } from "@wyd/shared";
 
 export const cn = (...inputs: ClassValue[]) => twMerge(clsx(inputs));
 export const num = (n: number | null | undefined) => (n == null ? "—" : Number(n).toLocaleString("ko-KR"));
 const KO = new Intl.Collator("ko", { numeric: true, sensitivity: "base" });
 /** 한국어 + 숫자 자연 정렬 (P9 < P10 < P1000) */
-export const cmp = (a: unknown, b: unknown) => KO.compare(String(a ?? ""), String(b ?? ""));
+export const cmp = (a: unknown, b: unknown) => KO.compare(toStr(a), toStr(b));
 /** 띄어쓰기로 여러 조건(AND) 검색 */
 export function matchQuery(q: string, ...fields: unknown[]): boolean {
   const terms = q.trim().toLowerCase().split(/\s+/).filter(Boolean);
   if (!terms.length) return true;
   const hay = fields
-    .map((f) => String(f ?? ""))
+    .map((f) => toStr(f))
     .join(" ")
     .toLowerCase();
   return terms.every((t) => hay.includes(t));

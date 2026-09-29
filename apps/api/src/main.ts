@@ -4,7 +4,6 @@ import { FastifyAdapter, type NestFastifyApplication } from "@nestjs/platform-fa
 import cookie from "@fastify/cookie";
 import helmet from "@fastify/helmet";
 import multipart from "@fastify/multipart";
-import fstatic from "@fastify/static";
 import path from "node:path";
 import { mkdirSync } from "node:fs";
 import { AppModule } from "./app.module.js";
@@ -30,6 +29,8 @@ async function main() {
   if (!env.isProd) {
     const root = path.resolve(env.UPLOAD_DIR);
     mkdirSync(root, { recursive: true });
+    // 개발 전용 패키지 → 동적 import(운영 이미지에는 없어도 기동에 영향 없음)
+    const { default: fstatic } = await import("@fastify/static");
     await app.register(fstatic, { root, prefix: "/uploads/", decorateReply: false });
   }
   app.enableShutdownHooks();

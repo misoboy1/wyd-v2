@@ -48,7 +48,7 @@ export function GoriPhotoCell({ row, canEdit }: { row: Gori; canEdit: boolean })
       toast.success(`${mdw(row.date)} 사진을 올렸습니다.`);
     } catch (e) {
       if (e instanceof ApiError && (e.code === "CONFLICT" || e.code === "NOTFOUND")) {
-        qc.invalidateQueries({ queryKey: tableKey("gori") });
+        void qc.invalidateQueries({ queryKey: tableKey("gori") });
         toast.error("다른 사용자가 먼저 수정했습니다. 새로 불러온 뒤 다시 올려 주세요.");
       } else toast.error("사진 업로드에 실패했습니다. (" + errorMessage(e) + ")");
     } finally {

@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+# git pre-commit — Claude 훅과 같은 리뷰 게이트(리뷰 완료 + 🔴 0건 + 포맷·린트). 설치: npm install(prepare) 또는 git config core.hooksPath .githooks
+exec bash "$(git rev-parse --show-toplevel)/.claude/hooks/pre-commit-gate.sh" --git

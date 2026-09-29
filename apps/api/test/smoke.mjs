@@ -1,5 +1,7 @@
 // API 통합·동시성 스모크 테스트 — 실행 중인 서버 대상
 // 사용: API=http://127.0.0.1:3000/api ADMIN_USERNAME=admin ADMIN_PASSWORD=... node test/smoke.mjs
+import { teamInfo } from "@wyd/shared";
+
 const A = process.env.API ?? "http://127.0.0.1:3000/api";
 let cookie = "";
 const call = async (method, path, body, opts = {}) => {
@@ -13,7 +15,9 @@ const call = async (method, path, body, opts = {}) => {
   let j = null;
   try {
     j = await r.json();
-  } catch {}
+  } catch {
+    /* 본문 없는 응답 */
+  }
   return { status: r.status, body: j };
 };
 let fail = 0;
@@ -84,6 +88,76 @@ const q = await call("POST", "/qna/ask", { author: "Test", q: "질문", a: "해�
 ok(q.status === 201 && q.body.a === "" && q.body.answered === false, "공개 질문 등록(답변 필드 무시)", q.body);
 const anonW = await call("POST", "/t/notices", { title: "x" }, { cookie: "" });
 ok(anonW.status === 401, "비로그인 공지 작성 거부", anonW.body);
+
+// 8) 역할별 권한 (TEST-02) — host·dept 임시 계정. 계정은 중간에 실패해도 finally에서 삭제
+const hs = (await call("GET", "/t/homestays")).body;
+const [myHs, otherHs] = [hs[0], hs[1]];
+const vols = (await call("GET", "/t/volunteers")).body;
+// 서버(sameTeam)와 같은 기준: 별칭까지 정규화한 팀으로 비교
+const otherTeamVol = vols.find((x) => teamInfo(x).team !== "환대팀");
+const outsideVisitor = (await call("GET", "/t/visitors")).body.find((x) => x.homestayId !== myHs?.id);
+const stamp = Date.now();
+const mk = async (role, extra) => {
+  const r = await call("POST", "/users", { username: `t${role}${stamp}`, name: role, role, password: "test-pass-1234", ...extra });
+  ok(r.status === 201 || r.status === 200, `임시 ${role} 계정 생성`, r.body);
+  return r.body;
+};
+const loginAs = async (u) => {
+  const r = await fetch(A + "/auth/login", {
+    method: "POST",
+    headers: { "content-type": "application/json", "x-wyd": "1" },
+    body: JSON.stringify({ username: u.username, password: "test-pass-1234" }),
+  });
+  ok(r.status === 200, `${u.role} 로그인`, r.status);
+  return r.headers
+    .getSetCookie()
+    .map((c) => c.split(";")[0])
+    .join("; ");
+};
+const temp = [];
+try {
+  if (!myHs || !otherHs) console.log("- host 권한 검사 건너뜀: 홈스테이 가정이 2곳 이상 필요");
+  else {
+    const hostU = await mk("host", { homestayId: myHs.id });
+    temp.push(hostU);
+    const hostC = await loginAs(hostU);
+    const leak = await call("PATCH", `/t/homestays/${otherHs.id}`, { version: -1 }, { cookie: hostC });
+    ok(
+      leak.status === 404 && !JSON.stringify(leak.body).includes(otherHs.addr || "@@"),
+      "host: 다른 가정에 버전 충돌을 유도해도 개인정보 없이 404",
+      leak.body,
+    );
+    if (!outsideVisitor) console.log("- host 방문자 삭제 검사 건너뜀: 다른 가정 방문자 없음");
+    else {
+      const leakDel = await call("DELETE", `/t/visitors/${outsideVisitor.id}?version=-1`, undefined, { cookie: hostC });
+      ok([403, 404].includes(leakDel.status) && !leakDel.body?.detail, "host: 권한 밖 방문자 삭제 시도 → 행 정보 없이 거부", leakDel.body);
+    }
+    const hostVols = await call("GET", "/t/volunteers", undefined, { cookie: hostC });
+    ok(hostVols.status === 200 && hostVols.body.length === 0, "host: 봉사자 명단(연락처) 받지 않음", hostVols.body?.length);
+    const hostHs = await call("GET", "/t/homestays", undefined, { cookie: hostC });
+    ok(hostHs.body.length === 1 && hostHs.body[0].id === myHs.id, "host: 자기 가정만 조회");
+  }
+  const deptU = await mk("dept", { team: "환대팀" });
+  temp.push(deptU);
+  const deptC = await loginAs(deptU);
+  if (!otherTeamVol) console.log("- dept 다른 팀 수정 검사 건너뜀: 환대팀 외 봉사자 없음");
+  else {
+    const deptOther = await call("PATCH", `/t/volunteers/${otherTeamVol.id}`, { version: -1, note: "x" }, { cookie: deptC });
+    ok(deptOther.status === 403 && !deptOther.body?.detail, "dept: 다른 팀 봉사자 수정 → 403(행 정보 없음)", deptOther.body);
+  }
+  const deptNotice = await call("POST", "/t/notices", { title: "x" }, { cookie: deptC });
+  ok(deptNotice.status === 403, "dept: 공지 작성 거부", deptNotice.body);
+} finally {
+  for (const u of temp) if (u?.id) await call("DELETE", `/users/${u.id}`);
+}
+
+// 9) 로그인 대입 방어: 한 계정에 동시 요청 → 대기열 상한(5)을 넘는 요청은 즉시 429
+// 없는 계정명이라 계정 잠금 영향 없음. IP 한도(30회/15분)에는 대기열에 들어간 5건만 기록되므로 15분에 몇 번 반복해도 됨
+const burst = await Promise.all(
+  Array.from({ length: 8 }, () => call("POST", "/auth/login", { username: `nobody${stamp}`, password: "wrong-pass" }, { cookie: "" })),
+);
+const codes = burst.map((r) => r.status);
+ok(!codes.includes(200) && codes.filter((c) => c === 429).length >= 1, "동시 로그인 8건 → 대기열 초과분 429", codes);
 
 // 정리
 const mine = (await call("GET", "/t/visitors")).body.filter((x) => x.note === "smoke" || x.name === "Smoke Test");

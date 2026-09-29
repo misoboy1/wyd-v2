@@ -6,3 +6,5 @@ dist
 backups/*.sql.gz
 migration-report.csv
 .DS_Store
+.claude/state/
+.claude/reviews/

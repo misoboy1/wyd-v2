@@ -69,8 +69,8 @@ export function DeptSection({ depts, vols, admin }: { depts: Department[]; vols:
       j = i + dir;
     if (j < 0 || j >= arr.length) return;
     const b = arr[j];
-    let sa = d.sort ?? 0,
-      sb = b.sort ?? 0;
+    const sa = d.sort ?? 0;
+    let sb = b.sort ?? 0;
     if (sa === sb) sb = sa + dir; // 순서 값이 같으면 강제로 벌림
     setMoving(true);
     const res = await bulkSave(qc, "departments", [

@@ -1,0 +1,30 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [{ "type": "command", "command": "bash \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/post-edit-lint.sh", "timeout": 90 }]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [{ "type": "command", "command": "bash \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/stop-review-gate.sh", "timeout": 30 }]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "matcher": "code-reviewer",
+        "hooks": [{ "type": "command", "command": "bash \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/save-review.sh", "timeout": 60 }]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          { "type": "command", "command": "bash \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/reviewer-readonly.sh", "timeout": 15 },
+          { "type": "command", "command": "bash \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/pre-commit-gate.sh", "timeout": 300 }
+        ]
+      }
+    ]
+  }
+}

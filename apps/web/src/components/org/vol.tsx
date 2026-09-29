@@ -38,7 +38,7 @@ export const volTeamSort = (a: Vol, b: Vol) =>
 /** 한국어 제외 언어만 표시 */
 export const showLangs = (s: string) =>
   String(s || "")
-    .split(/[\/,·]/)
+    .split(/[/,·]/)
     .map((x) => x.trim())
     .filter((x) => x && x !== "한국어")
     .join("/");

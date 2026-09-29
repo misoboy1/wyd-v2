@@ -20,6 +20,21 @@ npm run format         # Prettier 적용
 
 린트 규칙을 끌 때는 **해당 줄만**, 사유 주석과 함께: `// eslint-disable-next-line <규칙> -- <이유>`. 파일 전체 비활성화 금지(자동 추출 파일 `content.ts` 제외).
 
+### 리뷰 절차 (Claude Code 훅으로 자동 적용 — `.claude/settings.json`, `v2/`에서 `claude` 실행 시)
+
+구현 → `code-reviewer` 서브에이전트 리뷰 → 🔴 수정 → 재리뷰(🔴 0건) → 커밋
+
+| 시점 | 훅 | 동작 |
+|---|---|---|
+| 파일 편집 직후 | `post-edit-lint.sh` | Prettier 적용 + 해당 파일 ESLint, 오류는 즉시 Claude에게 되돌림 |
+| 턴 종료 | `stop-review-gate.sh` | 미리뷰 변경·🔴 잔존 시 1회 알림 |
+| 리뷰어 종료 | `save-review.sh` | 보고서 `.claude/reviews/` 저장, `REVIEW_RESULT` 줄로 🔴 집계 → `.claude/state/review.json` |
+| `git commit` (Claude) | `pre-commit-gate.sh` | 현재 변경분이 리뷰되지 않았거나 🔴>0이면 명령 자체를 거부 |
+| `git commit` (모든 커밋) | `.githooks/pre-commit` → `pre-commit-gate.sh --git` | 위 조건 + `format:check`·`lint` 실패면 차단. `npm install` 시 `prepare`가 `core.hooksPath`를 설정 |
+| 리뷰 중 Bash | `reviewer-readonly.sh` | 리뷰어의 수정·git 변경 명령 차단 |
+
+"리뷰됨"은 리뷰 시점의 코드 지문(`git diff HEAD` + 새 파일, `*.md`·`.claude` 제외)과 현재가 같다는 뜻 — 🔴를 고치면 지문이 바뀌므로 재리뷰가 필요합니다. 긴급 우회: `WYD_SKIP_REVIEW=1` 또는 `touch .claude/state/skip`(사용 후 삭제).
+
 ---
 
 ## G. 공통

@@ -2,7 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import type { Role, TableName, User } from "@wyd/shared";
-import { teamInfo } from "@wyd/shared";
+import { teamInfo, VOLUNTEER_VIEW_ROLES } from "@wyd/shared";
 import { api, setSessionExpiredHandler } from "./api";
 
 type AuthUser = Pick<User, "id" | "username" | "name" | "role" | "team" | "homestayId">;
@@ -60,7 +60,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     async (username: string, password: string) => {
       const r = await api.post<{ user: AuthUser }>("/auth/login", { username, password });
       setUser(r.user);
-      qc.invalidateQueries();
+      void qc.invalidateQueries();
     },
     [qc],
   );
@@ -68,7 +68,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await api.post("/auth/logout").catch(() => {});
     setUser(null);
     qc.removeQueries({ predicate: (q) => q.queryKey[0] === "t" && AUTH_TABLES.includes(q.queryKey[1] as TableName) });
-    qc.invalidateQueries();
+    void qc.invalidateQueries();
   }, [qc]);
 
   const v = useMemo(() => ({ user, ready, login, logout, loginOpen, setLoginOpen }), [user, ready, login, logout, loginOpen]);
@@ -89,7 +89,8 @@ export function useCan() {
       user,
       isAdmin: user?.role === "admin",
       loggedIn: !!user,
-      canRead: (t: TableName) => !AUTH_TABLES.includes(t) || !!user,
+      canRead: (t: TableName) =>
+        (!AUTH_TABLES.includes(t) || !!user) && (t !== "volunteers" || (!!user && VOLUNTEER_VIEW_ROLES.includes(user.role))),
       /** row: 대상 행(수정·삭제) 또는 새 값(추가) */
       canWrite: (t: TableName, row?: Record<string, any> | null) => {
         if (!user) return false;

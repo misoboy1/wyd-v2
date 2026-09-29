@@ -1,5 +1,6 @@
 // 입력 검증(zod) — API DTO 검증과 프론트 폼 검증에서 공용
 import { z } from "zod";
+import { toStr } from "./text.js";
 
 const str = (max = 2000) => z.string().trim().max(max).default("");
 const optNum = z
@@ -19,9 +20,7 @@ const idRef = z
 export const SEX_VALUES = ["", "남", "여"] as const;
 /** 엑셀 등에서 들어온 성별 표기 정규화 */
 export function normSex(v: unknown): string {
-  const s = String(v ?? "")
-    .trim()
-    .toLowerCase();
+  const s = toStr(v).trim().toLowerCase();
   if (["남", "남자", "남성", "m", "male", "man"].includes(s)) return "남";
   if (["여", "여자", "여성", "f", "female", "woman"].includes(s)) return "여";
   return "";

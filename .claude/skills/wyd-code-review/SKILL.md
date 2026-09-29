@@ -72,9 +72,12 @@ Prettier 포맷 · ESLint(규칙별 집계 + 위치) · TypeScript(전체) · �
 ## 다음 단계
 - 자동 수정 가능: `npm run lint:fix && npm run format` (n건)
 - 수동 수정 필요: 🔴 n건, 🟠 n건
+
+REVIEW_RESULT: red=<🔴 건수> orange=<🟠 건수> yellow=<🟡 건수>
 ```
 
 규칙:
 - 모든 발견 사항에 `파일:줄` + 규칙 ID(없으면 "일반")를 붙임
 - 같은 유형은 묶어서 한 번만, 대표 위치 + "외 n곳"
 - 확인하지 못한 것은 확인하지 못했다고 적음(예: "Docker 빌드는 실행하지 않음")
+- **마지막 줄은 반드시 `REVIEW_RESULT: red=N orange=N yellow=N`** — 훅(`save-review.sh`)이 이 줄로 🔴 건수를 기록하고, 🔴가 0이 아니면 커밋을 차단함. 보고서를 요약·영문화하지 말고 이 형식 그대로 반환

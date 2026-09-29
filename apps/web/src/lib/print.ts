@@ -1,4 +1,4 @@
-import { PARISH, todayKST } from "@wyd/shared";
+import { PARISH, todayKST, toStr } from "@wyd/shared";
 
 export interface PrintSection {
   heading?: string;
@@ -7,7 +7,7 @@ export interface PrintSection {
   rows: (string | number | null | undefined)[][];
 }
 const esc = (s: unknown) =>
-  String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
+  toStr(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
 
 /**
  * 인쇄용 문서(A4) — 새 창 대신 숨은 iframe에 그려 바로 인쇄 대화상자.

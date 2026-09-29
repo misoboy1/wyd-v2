@@ -1,5 +1,7 @@
 // 도메인 타입 — API 응답/요청과 화면이 공유
 export type Role = "admin" | "dept" | "host";
+// 봉사자 명단(연락처 포함)·조직도 열람 역할 — 서버 registry scope, 화면 라우트·메뉴·canRead가 모두 이 값을 따름
+export const VOLUNTEER_VIEW_ROLES: readonly Role[] = ["admin", "dept"];
 export type Sex = "남" | "여" | "";
 
 export interface Base {

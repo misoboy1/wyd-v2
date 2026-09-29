@@ -28,7 +28,11 @@ npx --no-install prettier --check "${SCOPE[@]}" --log-level warn > "$TMP/fmt.txt
 FMT_N=$(grep '^\[warn\] ' "$TMP/fmt.txt" | grep -vc 'Code style issues' | tr -d ' ')
 
 # 2) ESLint (JSON → 규칙별·파일별 요약)
-npx --no-install eslint "${SCOPE[@]}" --format json -o "$TMP/lint.json" --no-error-on-unmatched-pattern > "$TMP/lint.err" 2>&1; LINT=$?
+# ESLint는 코드 파일만(json·css는 Prettier만 검사) — 무시된 파일 경고 방지
+LINT_SCOPE=(); for f in "${SCOPE[@]}"; do case "$f" in *.json|*.css) ;; *) LINT_SCOPE+=("$f");; esac; done
+if [ ${#LINT_SCOPE[@]} -eq 0 ]; then echo "[]" > "$TMP/lint.json"; LINT=0; else
+npx --no-install eslint "${LINT_SCOPE[@]}" --format json -o "$TMP/lint.json" --no-error-on-unmatched-pattern --no-warn-ignored > "$TMP/lint.err" 2>&1; LINT=$?
+fi
 node - "$TMP/lint.json" "$ROOT" > "$TMP/lint.md" <<'NODE'
 const fs = require("fs"); const [file, root] = process.argv.slice(2);
 let r = []; try { r = JSON.parse(fs.readFileSync(file, "utf8")); } catch { console.log("(ESLint JSON 없음 — 설정 오류일 수 있음)"); process.exit(0); }

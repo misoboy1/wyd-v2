@@ -13,7 +13,7 @@
 // 연결하지 못한 값은 orphanStay 에 보존하고 migration-report.csv 에 기록
 import { writeFileSync, readFileSync } from "node:fs";
 import { sql } from "drizzle-orm";
-import { normDate, normSex, VIRTUAL, isSleepRoom } from "@wyd/shared";
+import { normDate, normSex, VIRTUAL, isSleepRoom, toStr } from "@wyd/shared";
 import { db, sqlClient } from "../db/client.js";
 import * as S from "../db/schema.js";
 
@@ -29,10 +29,9 @@ const DRY = flag("--dry-run"),
   SKIP_VIRTUAL = flag("--skip-virtual");
 
 const report: string[][] = [["표", "번호/이름", "항목", "원래 값", "처리"]];
-const note = (t: string, who: string, field: string, val: unknown, action: string) =>
-  report.push([t, who, field, String(val ?? ""), action]);
+const note = (t: string, who: string, field: string, val: unknown, action: string) => report.push([t, who, field, toStr(val), action]);
 
-const s = (v: unknown) => (v == null ? "" : String(v).trim());
+const s = (v: unknown) => toStr(v).trim();
 const n = (v: unknown) => {
   const x = s(v);
   if (!x) return null;
@@ -120,7 +119,9 @@ async function main() {
         "gori",
       ];
       for (const t of order) {
+        // eslint-disable-next-line no-restricted-properties -- t는 위 고정 목록의 표 이름(사용자 입력 아님)
         await tx.execute(sql.raw(`delete from ${t}`));
+        // eslint-disable-next-line no-restricted-properties -- 위와 같음
         await tx.execute(sql.raw(`select setval(pg_get_serial_sequence('${t}', 'id'), 1, false)`));
       }
     } else

@@ -132,7 +132,7 @@ export default function Homestays() {
     setOpen((s) => new Set(s).add(focus.id));
     const t = setTimeout(() => document.querySelector(".hs-focus-row")?.scrollIntoView({ block: "center", behavior: "smooth" }), 80);
     return () => clearTimeout(t);
-  }, [focus?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [focus?.id]); // eslint-disable-line react-hooks/exhaustive-deps -- 포커스 가정이 바뀔 때만 펼침·스크롤(의도)
 
   const dup = useMemo(() => dupHosts(homestays), [homestays]);
   const kindCnt = useMemo(() => {

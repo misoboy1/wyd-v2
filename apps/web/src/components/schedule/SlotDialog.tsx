@@ -61,6 +61,7 @@ export function SlotDialog({
     setOrig(cur);
     setV({ time: cur?.time ?? "", text: cur?.text ?? "", who: cur?.who ?? "" });
     // 창을 여는 순간의 값만 채움(편집 중 실시간 갱신으로 입력이 지워지지 않도록)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- day 전체가 아닌 day.id 변경 때만 초기화(의도)
   }, [open, index, day?.id]);
   if (!day) return null;
 

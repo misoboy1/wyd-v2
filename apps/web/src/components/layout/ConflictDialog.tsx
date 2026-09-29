@@ -1,3 +1,4 @@
+import { toStr } from "@wyd/shared";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Dialog } from "@/components/ui/dialog";
@@ -5,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { conflictBus, errorMessage, type ConflictInfo } from "@/lib/data";
 
 const SKIP = new Set(["id", "version", "updatedAt", "slots"]);
-const show = (v: unknown) => (v === null || v === undefined || v === "" ? "—" : typeof v === "object" ? JSON.stringify(v) : String(v));
+const show = (v: unknown) => toStr(v) || "—";
 
 /** 다른 사용자가 먼저 수정한 행을 저장하려 할 때: 최신 값과 내 변경을 비교해 선택 */
 export function ConflictDialog() {

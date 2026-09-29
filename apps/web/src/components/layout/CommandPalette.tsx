@@ -18,7 +18,7 @@ export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenCh
   const go = (to: string) => {
     onOpenChange(false);
     setQ("");
-    nav(to);
+    void nav(to);
   };
   const term = q.trim().toLowerCase();
   const people = useMemo(
