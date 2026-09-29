@@ -166,6 +166,11 @@ VUS=50 SECS=30 node apps/api/test/load.mjs # 간이 부하(동시 50명)
 k6 run -e BASE=https://<도메인> -e USER=admin -e PASS=… scripts/load/k6-mixed.js
 ```
 
+### 코드 컨벤션 · 코드리뷰
+- 규칙: [`CONVENTIONS.md`](CONVENTIONS.md) — 커밋 전 `npm run check`(포맷·린트·타입·테스트)
+- 리뷰: Claude Code 세션을 **`v2/` 폴더에서 열고** `/wyd-code-review`(변경분), `/wyd-code-review --all`(전체), `/wyd-code-review apps/api/src/tables`(경로) 또는 "code-reviewer 에이전트로 리뷰해줘"
+  - 스킬: `.claude/skills/wyd-code-review/` (자동 검사 스크립트·체크리스트), 에이전트: `.claude/agents/code-reviewer.md`(읽기 전용)
+
 ### API 요약 (`/api`)
 | | |
 |---|---|
