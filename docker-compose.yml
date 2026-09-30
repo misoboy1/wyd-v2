@@ -1,5 +1,5 @@
 # 중계양업성당 WYD 2027 — 웹서버(nginx) / WAS(api) / DB(postgres) / 터널(ngrok)
-# GCP e2-micro(RAM 1GB) 기준 메모리 상한. 실행: docker compose up -d --build
+# GCP e2-micro(RAM 1GB) 기준 메모리 상한. 실행: docker compose up -d --build (자동 배포 서버는 scripts/auto-deploy.sh)
 name: wyd
 
 services:
@@ -26,6 +26,8 @@ services:
     networks: [internal]
 
   api:
+    # 로컬: --build로 직접 조립 / 서버: .env의 IMAGE_REPO(GHCR)에서 받아 씀(자동 배포, docs/CICD.md)
+    image: ${IMAGE_REPO:-local/wyd}-api:${IMAGE_TAG:-latest}
     build: { context: ., dockerfile: apps/api/Dockerfile }
     restart: unless-stopped
     depends_on:
@@ -47,6 +49,7 @@ services:
     networks: [internal, edge] # edge: 묵주기도 현황 수집용 외부 접속(포트는 열지 않음)
 
   web:
+    image: ${IMAGE_REPO:-local/wyd}-web:${IMAGE_TAG:-latest}
     build: { context: ., dockerfile: apps/web/Dockerfile }
     restart: unless-stopped
     depends_on: [api]

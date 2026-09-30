@@ -1,0 +1,84 @@
+# 자동 배포 1단계: main에 push → 검사(npm run check) → api·web 이미지를 GHCR에 올림
+# 서버(GCP VM)는 scripts/auto-deploy.sh가 5분마다 "두 이미지가 모두 준비된 커밋"만 가져가 교체한다 — 여기서 서버에 접속하지 않음
+name: deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# 한 번에 하나씩 실행(연달아 push하면 마지막 것만 대기열에 남음). 실행 중인 것은 취소하지 않음
+# — promote 도중 취소되면 api·web의 latest가 서로 다른 커밋을 가리킬 수 있어서
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      # api·web 타입검사와 린트가 @wyd/shared의 빌드 결과(dist)를 참조
+      - run: npm run build -w @wyd/shared
+      - run: npm run check
+
+  # 커밋 SHA 태그로만 올린다 — 서버는 api·web 둘 다 이 태그가 있을 때만 배포(버전 불일치 방지)
+  images:
+    needs: check
+    # 수동 실행(workflow_dispatch)으로 다른 브랜치가 배포되지 않도록
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      matrix:
+        app: [api, web]
+    steps:
+      - uses: actions/checkout@v4
+      # GHCR 이미지 이름은 소문자만 허용
+      - id: repo
+        run: echo "prefix=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/wyd" >> "$GITHUB_OUTPUT"
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/${{ matrix.app }}/Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: ${{ steps.repo.outputs.prefix }}-${{ matrix.app }}:${{ github.sha }}
+          # 패키지를 이 저장소에 연결(저장소 Packages에 표시, 권한 상속)
+          labels: org.opencontainers.image.source=https://github.com/${{ github.repository }}
+          cache-from: type=gha,scope=${{ matrix.app }}
+          cache-to: type=gha,scope=${{ matrix.app }},mode=max
+
+  # 두 이미지가 모두 올라간 뒤에만 latest를 함께 옮김(수동 docker compose up용)
+  promote:
+    needs: images
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - run: |
+          p="ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/wyd"
+          for a in api web; do docker buildx imagetools create -t "$p-$a:latest" "$p-$a:$GITHUB_SHA"; done

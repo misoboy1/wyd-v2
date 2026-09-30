@@ -53,6 +53,8 @@ v2/
 
 ## 1. GCP 무료 VM에 배포
 
+> 처음이라면 화면 하나하나 따라 하는 **[쉬운 배포 가이드(docs/DEPLOY-GCP.md)](docs/DEPLOY-GCP.md)** 를 보세요. 아래는 요약입니다.
+
 ### 1-1. VM 만들기
 1. GCP 콘솔 → Compute Engine → VM 인스턴스 만들기
    - 리전: **us-west1 / us-central1 / us-east1** 중 하나(무료 등급 대상)
@@ -91,6 +93,8 @@ docker compose logs -f api                 # "관리자 계정 생성: admin" �
 > 빌드가 메모리 부족으로 느리거나 실패하면: 로컬 PC에서 이미지를 빌드해 올리거나(`docker save | ssh … docker load`), 스왑이 켜져 있는지 확인하세요.
 
 ### 1-4. 업데이트
+> 자동 배포(GitHub push → 서버 자동 반영)를 켰다면 [docs/CICD.md](docs/CICD.md)를 따르세요. 아래는 수동 방식입니다.
+
 ```bash
 git pull && docker compose up -d --build   # DB 마이그레이션은 api 기동 시 자동 적용
 ```

@@ -7,4 +7,7 @@ backups/*.sql.gz
 migration-report.csv
 .DS_Store
 .claude/state/
+.deploy.lock
+.deploy-wait
+.deploy-pin
 .claude/reviews/
