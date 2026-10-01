@@ -1,18 +1,41 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router";
 import { Dialog as D } from "radix-ui";
-import { Lock, LogIn, LogOut, Menu as MenuIcon, Moon, MoreHorizontal, Search, Sun, SunMoon, UserRound, KeyRound, X } from "lucide-react";
-import { WYD_OPEN, PARISH } from "@wyd/shared";
+import {
+  Check,
+  Languages,
+  Lock,
+  LogIn,
+  LogOut,
+  Menu as MenuIcon,
+  Moon,
+  MoreHorizontal,
+  Search,
+  Sun,
+  SunMoon,
+  UserRound,
+  KeyRound,
+  X,
+} from "lucide-react";
+import { LOCALES, LOCALE_NAMES, WYD_OPEN, PARISH } from "@wyd/shared";
 import { NAV_GROUPS, NAV_ITEMS, MOBILE_TABS, type NavItem } from "@/lib/nav";
-import { useAuth, ROLE_LABEL } from "@/lib/auth";
+import { useAuth } from "@/lib/auth";
+import { useT } from "@/lib/i18n";
 import { useTheme } from "@/lib/theme";
 import { cn, daysBetween } from "@/lib/utils";
-import { todayKST } from "@wyd/shared";
+import { todayKST, translate, type MsgKey } from "@wyd/shared";
 import { Menu, MenuItem, MenuLabel, MenuSep } from "@/components/ui/menu";
 import { Button } from "@/components/ui/button";
 import { CommandPalette } from "./CommandPalette";
 import { LoginDialog } from "./LoginDialog";
 import { PasswordDialog } from "./PasswordDialog";
+
+const MOBILE_TAB_LABEL: Record<string, MsgKey> = {
+  "/": "shell.mobileTab.dash",
+  "/visitors": "shell.mobileTab.visitors",
+  "/homestays": "shell.mobileTab.homestays",
+  "/gori": "shell.mobileTab.gori",
+};
 
 function visible(item: NavItem, role?: string) {
   return !item.roles || (role && item.roles.includes(role as any));
@@ -20,14 +43,15 @@ function visible(item: NavItem, role?: string) {
 
 function NavList({ onNavigate }: { onNavigate?: () => void }) {
   const { user } = useAuth();
+  const { t } = useT();
   return (
-    <nav className="flex flex-col gap-5 px-3 py-4" aria-label="주 메뉴">
+    <nav className="flex flex-col gap-5 px-3 py-4" aria-label={t("shell.mainNav")}>
       {NAV_GROUPS.map((g) => {
         const items = g.items.filter((i) => visible(i, user?.role));
         if (!items.length) return null;
         return (
           <div key={g.label}>
-            <div className="mb-1.5 px-2.5 text-[11.5px] font-semibold tracking-wide text-ink-3">{g.label}</div>
+            <div className="mb-1.5 px-2.5 text-[11.5px] font-semibold tracking-wide text-ink-3">{t(g.label)}</div>
             <ul className="flex flex-col gap-0.5">
               {items.map((i) => (
                 <li key={i.path}>
@@ -43,8 +67,8 @@ function NavList({ onNavigate }: { onNavigate?: () => void }) {
                     }
                   >
                     <i.icon className="size-4.5 shrink-0 opacity-80" />
-                    <span className="flex-1 truncate">{i.label}</span>
-                    {i.auth && !user && <Lock className="size-3.5 text-ink-3" aria-label="로그인 필요" />}
+                    <span className="flex-1 truncate">{t(i.label)}</span>
+                    {i.auth && !user && <Lock className="size-3.5 text-ink-3" aria-label={t("shell.loginRequired")} />}
                   </NavLink>
                 </li>
               ))}
@@ -58,8 +82,9 @@ function NavList({ onNavigate }: { onNavigate?: () => void }) {
 
 function Brand({ compact }: { compact?: boolean }) {
   const nav = useNavigate();
+  const { t } = useT();
   return (
-    <button onClick={() => nav("/")} className="flex min-w-0 items-center gap-2.5 text-left" title="대시보드로 이동">
+    <button onClick={() => nav("/")} className="flex min-w-0 items-center gap-2.5 text-left" title={t("shell.goDashboard")}>
       <img
         src="/wyd-logo.png"
         alt="WYD Seoul 2027"
@@ -67,22 +92,23 @@ function Brand({ compact }: { compact?: boolean }) {
       />
       <div className="min-w-0 leading-tight">
         <div className="truncate text-[14px] font-bold text-ink">{PARISH.name}</div>
-        <div className="truncate text-[11.5px] text-ink-3">WYD 2027 순례자 맞이</div>
+        <div className="truncate text-[11.5px] text-ink-3">{t("shell.tagline")}</div>
       </div>
     </button>
   );
 }
 
 function DdayBadge() {
+  const { t } = useT();
   const d = daysBetween(todayKST(), WYD_OPEN);
-  const label = d > 0 ? `D-${d}` : d === 0 ? "D-DAY" : `D+${-d}`;
+  const label = d > 0 ? t("common.dDay", { n: d }) : d === 0 ? t("common.dDayToday") : t("common.dDayPast", { n: -d });
   return (
     <div
       className="hidden items-center gap-1.5 rounded-full border border-line bg-surface px-3 py-1 text-[12.5px] font-semibold sm:flex"
-      title="개막미사 2027-08-03 기준"
+      title={t("shell.openingMassHint")}
     >
       <span className="size-1.5 rounded-full bg-accent" />
-      <span className="text-ink-3">개막미사</span>
+      <span className="text-ink-3">{t("shell.openingMass")}</span>
       <span className="tabular text-ink">{label}</span>
     </div>
   );
@@ -90,37 +116,62 @@ function DdayBadge() {
 
 function ThemeButton() {
   const { pref, setPref } = useTheme();
+  const { t } = useT();
   const Icon = pref === "dark" ? Moon : pref === "light" ? Sun : SunMoon;
   return (
     <Menu
       trigger={
-        <Button variant="ghost" size="icon" aria-label="화면 테마">
+        <Button variant="ghost" size="icon" aria-label={t("shell.themeTitle")}>
           <Icon />
         </Button>
       }
     >
-      <MenuLabel>화면 테마</MenuLabel>
+      <MenuLabel>{t("shell.themeTitle")}</MenuLabel>
       <MenuItem icon={<SunMoon />} onSelect={() => setPref("system")}>
-        기기 설정 따름{pref === "system" && " ✓"}
+        {t("shell.themeSystem")}
+        {pref === "system" && " ✓"}
       </MenuItem>
       <MenuItem icon={<Sun />} onSelect={() => setPref("light")}>
-        밝게{pref === "light" && " ✓"}
+        {t("shell.themeLight")}
+        {pref === "light" && " ✓"}
       </MenuItem>
       <MenuItem icon={<Moon />} onSelect={() => setPref("dark")}>
-        어둡게{pref === "dark" && " ✓"}
+        {t("shell.themeDark")}
+        {pref === "dark" && " ✓"}
       </MenuItem>
+    </Menu>
+  );
+}
+
+function LangButton() {
+  const { t, locale, setLocale } = useT();
+  return (
+    <Menu
+      trigger={
+        <Button variant="ghost" size="icon" aria-label={t("shell.langTitle")}>
+          <Languages />
+        </Button>
+      }
+    >
+      <MenuLabel>{t("shell.langTitle")}</MenuLabel>
+      {LOCALES.map((l) => (
+        <MenuItem key={l} icon={l === locale ? <Check /> : <span className="size-4" />} onSelect={() => setLocale(l)}>
+          <span lang={l}>{LOCALE_NAMES[l]}</span>
+        </MenuItem>
+      ))}
     </Menu>
   );
 }
 
 function UserButton() {
   const { user, logout, setLoginOpen } = useAuth();
+  const { t, label } = useT();
   const [pw, setPw] = useState(false);
   if (!user)
     return (
       <Button variant="primary" size="sm" onClick={() => setLoginOpen(true)}>
         <LogIn />
-        로그인
+        {t("shell.login")}
       </Button>
     );
   return (
@@ -136,15 +187,15 @@ function UserButton() {
         }
       >
         <MenuLabel>
-          {user.username} · {ROLE_LABEL[user.role]}
+          {user.username} · {label("appRole", user.role)}
           {user.team ? ` · ${user.team}` : ""}
         </MenuLabel>
         <MenuItem icon={<KeyRound />} onSelect={() => setPw(true)}>
-          비밀번호 변경
+          {t("shell.changePassword")}
         </MenuItem>
         <MenuSep />
         <MenuItem icon={<LogOut />} onSelect={() => void logout()}>
-          로그아웃
+          {t("shell.logout")}
         </MenuItem>
       </Menu>
       <PasswordDialog open={pw} onOpenChange={setPw} />
@@ -155,6 +206,7 @@ function UserButton() {
 /** 보호된 화면: 비로그인이면 안내 + 로그인 버튼 */
 export function RequireAuth({ children, roles }: { children: ReactNode; roles?: readonly string[] }) {
   const { user, ready, setLoginOpen } = useAuth();
+  const { t } = useT();
   if (!ready) return null;
   if (!user || (roles && !roles.includes(user.role))) {
     return (
@@ -162,14 +214,12 @@ export function RequireAuth({ children, roles }: { children: ReactNode; roles?: 
         <div className="mx-auto mb-3 flex size-12 items-center justify-center rounded-full bg-primary-soft text-primary-soft-ink">
           <Lock className="size-5" />
         </div>
-        <h2 className="text-[17px] font-semibold">{user ? "권한이 필요한 화면입니다" : "로그인이 필요한 화면입니다"}</h2>
-        <p className="mt-1.5 text-[13.5px] text-ink-3">
-          {user ? "본당 관리자에게 권한을 요청하세요." : "연락처·주소 등 개인정보 보호를 위해 봉사자 계정으로 로그인해야 볼 수 있습니다."}
-        </p>
+        <h2 className="text-[17px] font-semibold">{user ? t("shell.needRoleTitle") : t("shell.needLoginTitle")}</h2>
+        <p className="mt-1.5 text-[13.5px] text-ink-3">{user ? t("shell.needRoleBody") : t("shell.needLoginBody")}</p>
         {!user && (
           <Button variant="primary" className="mt-5" onClick={() => setLoginOpen(true)}>
             <LogIn />
-            로그인
+            {t("shell.login")}
           </Button>
         )}
       </div>
@@ -183,6 +233,7 @@ export function AppShell() {
   const [cmd, setCmd] = useState(false);
   const loc = useLocation();
   const { user } = useAuth();
+  const { t, locale } = useT();
 
   useEffect(() => {
     const on = (e: KeyboardEvent) => {
@@ -199,8 +250,8 @@ export function AppShell() {
   }, [loc.pathname]);
   const current = NAV_ITEMS.find((i) => (i.path === "/" ? loc.pathname === "/" : loc.pathname.startsWith(i.path)));
   useEffect(() => {
-    document.title = `${current?.label ?? "WYD"} · 중계양업성당 WYD 2027`;
-  }, [current]);
+    document.title = t("shell.docTitle", { page: current ? t(current.label) : "WYD" });
+  }, [current, t]);
 
   return (
     <div className="min-h-dvh">
@@ -223,15 +274,15 @@ export function AppShell() {
       {/* 상단 바 */}
       <header className="no-print sticky top-0 z-20 border-b border-line bg-surface/85 backdrop-blur-md lg:pl-64">
         <div className="flex h-14 items-center gap-2 px-3 sm:h-16 sm:px-5">
-          <Button variant="ghost" size="icon" className="lg:hidden" aria-label="메뉴" onClick={() => setDrawer(true)}>
+          <Button variant="ghost" size="icon" className="lg:hidden" aria-label={t("shell.menu")} onClick={() => setDrawer(true)}>
             <MenuIcon />
           </Button>
           <div className="min-w-0 lg:hidden">
             <Brand compact />
           </div>
           <div className="hidden min-w-0 lg:block">
-            <div className="text-[15px] font-semibold text-ink">{current?.label}</div>
-            <div className="text-[11.5px] text-ink-3">{current?.en}</div>
+            <div className="text-[15px] font-semibold text-ink">{current && t(current.label)}</div>
+            {locale !== "en" && current && <div className="text-[11.5px] text-ink-3">{translate("en", current.label)}</div>}
           </div>
           <div className="flex-1" />
           <button
@@ -239,13 +290,14 @@ export function AppShell() {
             className="hidden h-9 w-64 items-center gap-2 rounded-lg border border-line bg-surface-2 px-3 text-[13px] text-ink-3 hover:border-line-strong md:flex"
           >
             <Search className="size-4" />
-            <span className="flex-1 text-left">이름·번호·메뉴 검색</span>
+            <span className="flex-1 text-left">{t("shell.searchHint")}</span>
             <kbd className="rounded border border-line bg-surface px-1.5 text-[11px]">⌘K</kbd>
           </button>
-          <Button variant="ghost" size="icon" className="md:hidden" aria-label="검색" onClick={() => setCmd(true)}>
+          <Button variant="ghost" size="icon" className="md:hidden" aria-label={t("shell.search")} onClick={() => setCmd(true)}>
             <Search />
           </Button>
           <DdayBadge />
+          <LangButton />
           <ThemeButton />
           <UserButton />
         </div>
@@ -256,11 +308,11 @@ export function AppShell() {
         <D.Portal>
           <D.Overlay className="fixed inset-0 z-40 bg-black/40 lg:hidden" />
           <D.Content className="fixed inset-y-0 left-0 z-50 flex w-[82vw] max-w-72 flex-col bg-surface shadow-pop outline-none lg:hidden">
-            <D.Title className="sr-only">메뉴</D.Title>
-            <D.Description className="sr-only">화면 이동</D.Description>
+            <D.Title className="sr-only">{t("shell.menu")}</D.Title>
+            <D.Description className="sr-only">{t("shell.navigate")}</D.Description>
             <div className="flex h-14 items-center justify-between border-b border-line px-4">
               <Brand compact />
-              <D.Close className="rounded-lg p-1.5 text-ink-3 hover:bg-surface-2" aria-label="닫기">
+              <D.Close className="rounded-lg p-1.5 text-ink-3 hover:bg-surface-2" aria-label={t("common.close")}>
                 <X className="size-5" />
               </D.Close>
             </div>
@@ -270,7 +322,7 @@ export function AppShell() {
             {!user && (
               <div className="border-t border-line p-3 text-[12px] text-ink-3">
                 <UserRound className="mr-1 inline size-3.5" />
-                자물쇠 메뉴는 로그인 후 이용할 수 있습니다.
+                {t("shell.lockedHint")}
               </div>
             )}
           </D.Content>
@@ -286,7 +338,7 @@ export function AppShell() {
       {/* 모바일 하단 탭 */}
       <nav
         className="no-print fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t border-line bg-surface/95 pb-[env(safe-area-inset-bottom)] backdrop-blur lg:hidden"
-        aria-label="빠른 메뉴"
+        aria-label={t("shell.quickNav")}
       >
         {MOBILE_TABS.map((p) => NAV_ITEMS.find((i) => i.path === p)!).map((i) => (
           <NavLink
@@ -298,12 +350,12 @@ export function AppShell() {
             }
           >
             <i.icon className="size-5" />
-            {i.label.replace(" 명단", "").replace(" 가정", "").replace(" 일정", "")}
+            {t(MOBILE_TAB_LABEL[i.path])}
           </NavLink>
         ))}
         <button onClick={() => setDrawer(true)} className="flex flex-col items-center gap-0.5 py-2 text-[11px] font-medium text-ink-3">
           <MoreHorizontal className="size-5" />
-          더보기
+          {t("shell.more")}
         </button>
       </nav>
 

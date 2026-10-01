@@ -5,6 +5,7 @@ import { ChevronRight, Download, LayoutDashboard, Printer } from "lucide-react";
 import { PARISH, WYD_DIOCESE, WYD_OPEN, todayKST } from "@wyd/shared";
 import { useTable } from "@/lib/data";
 import { useCan } from "@/lib/auth";
+import { useT } from "@/lib/i18n";
 import { PageHeader, Skeleton } from "@/components/ui/misc";
 import { Button } from "@/components/ui/button";
 import { ddText, goriDayPlus, md, RosaryCard, sortGori } from "@/components/gori/common";
@@ -21,49 +22,50 @@ const More = ({ to, children }: { to: string; children: string }) => (
 );
 
 function DdayCard() {
+  const { t } = useT();
   const today = todayKST();
   return (
     <div className="flex flex-col items-center justify-center rounded-2xl border border-primary/40 bg-primary-soft p-5 text-center">
-      <div className="text-[12.5px] font-semibold text-primary">2027 서울 WYD 개막까지</div>
+      <div className="text-[12.5px] font-semibold text-primary">{t("dash.ddayTitle")}</div>
       <div className="my-1 text-[40px] leading-none font-bold tracking-tight text-primary tabular">{ddText(WYD_OPEN, today)}</div>
-      <div className="text-[12.5px] text-ink-3">
-        개막미사 {md(WYD_OPEN)} · 교구대회 {ddText(WYD_DIOCESE, today)}
-      </div>
-      <More to="/prep">D-DAY 준비 일정</More>
+      <div className="text-[12.5px] text-ink-3">{t("dash.ddaySub", { open: md(WYD_OPEN), diocese: ddText(WYD_DIOCESE, today) })}</div>
+      <More to="/prep">{t("dash.prepLink")}</More>
     </div>
   );
 }
 
 function GoriTodayCard() {
+  const { t } = useT();
   const { rows, isLoading } = useTable("gori");
   const list = useMemo(() => sortGori(rows), [rows]);
   const todayIso = todayKST();
-  const t = list.find((x) => x.date === todayIso);
+  const cur = list.find((x) => x.date === todayIso);
   const dp = goriDayPlus(list, todayIso);
   return (
     <div className="flex flex-col rounded-2xl border border-line bg-surface p-4 shadow-soft">
       <div className="flex items-start justify-between gap-2">
-        <div className="text-[12.5px] font-semibold text-primary">🙏 오늘의 고리기도</div>
-        {dp && <div className="text-[24px] leading-none font-bold text-primary tabular">D+{dp.n}</div>}
+        <div className="text-[12.5px] font-semibold text-primary">🙏 {t("gori.todayTitle")}</div>
+        {dp && <div className="text-[24px] leading-none font-bold text-primary tabular">{t("common.dDayPast", { n: dp.n })}</div>}
       </div>
       {isLoading ? (
         <Skeleton className="mt-3 h-14" />
-      ) : t ? (
+      ) : cur ? (
         <>
-          <div className="mt-2 text-[20px] font-bold text-ink">{t.org}</div>
-          <div className="mt-0.5 text-[13px] text-ink-2">{t.rep}</div>
+          <div className="mt-2 text-[20px] font-bold text-ink">{cur.org}</div>
+          <div className="mt-0.5 text-[13px] text-ink-2">{cur.rep}</div>
           <div className="mt-1.5 text-[11.5px] text-ink-3">{todayIso}</div>
         </>
       ) : (
-        <div className="mt-3 text-[13.5px] text-ink-3">오늘({todayIso}) 배정된 고리기도가 없습니다.</div>
+        <div className="mt-3 text-[13.5px] text-ink-3">{t("gori.todayNone", { date: todayIso })}</div>
       )}
-      <More to="/gori">고리기도 일정</More>
+      <More to="/gori">{t("gori.title")}</More>
     </div>
   );
 }
 
 export default function Dashboard() {
   const { loggedIn } = useCan();
+  const { t } = useT();
   const visitors = useTable("visitors"),
     facilities = useTable("facilities"),
     homestays = useTable("homestays");
@@ -98,18 +100,18 @@ export default function Dashboard() {
     <div className="space-y-6">
       <PageHeader
         icon={<LayoutDashboard />}
-        title="대시보드"
-        subtitle={`${PARISH.name} 운영 현황 · 아래 수치는 각 화면과 같은 데이터에서 산출`}
+        title={t("nav.dash")}
+        subtitle={t("dash.subtitle", { parish: PARISH.name })}
         actions={
           loggedIn && (
             <>
               <Button onClick={() => downloadAllCSV(all, T)} disabled={stayLoading}>
                 <Download />
-                종합 엑셀(CSV)
+                {t("dash.exportCsv")}
               </Button>
               <Button variant="primary" onClick={() => printAll(all, T)} disabled={stayLoading}>
                 <Printer />
-                종합 보고서 PDF·인쇄
+                {t("dash.printReport")}
               </Button>
             </>
           )

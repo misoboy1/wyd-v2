@@ -11,9 +11,11 @@ import { RowActions } from "@/components/board/RowActions";
 import { useTable } from "@/lib/data";
 import { useCan } from "@/lib/auth";
 import { matchQuery } from "@/lib/utils";
+import { useT } from "@/lib/i18n";
 
 export default function Notices() {
   const { rows, isLoading } = useTable("notices");
+  const { t } = useT();
   const { isAdmin } = useCan();
   const [q, setQ] = useState("");
   const [edit, setEdit] = useState<{ row?: Notice | null } | null>(null);
@@ -24,18 +26,18 @@ export default function Notices() {
     <div className="mx-auto max-w-3xl">
       <PageHeader
         icon={<Megaphone />}
-        title="공지사항"
-        subtitle="본당·분과 공지 (관리자 작성) · 최신순"
+        title={t("board.notices.title")}
+        subtitle={t("board.notices.subtitle")}
         actions={
           isAdmin && (
             <Button variant="primary" onClick={() => setEdit({})}>
               <Plus />
-              공지 작성
+              {t("board.notices.write")}
             </Button>
           )
         }
       />
-      {rows.length > 3 && <SearchInput value={q} onChange={setQ} placeholder="공지 검색: 제목·내용·작성 주체" className="mb-4" />}
+      {rows.length > 3 && <SearchInput value={q} onChange={setQ} placeholder={t("board.notices.search")} className="mb-4" />}
       {isLoading ? (
         <div className="space-y-3">
           <Skeleton className="h-32" />
@@ -56,7 +58,7 @@ export default function Notices() {
           ))}
         </div>
       ) : (
-        <Empty icon={<Megaphone />} title={q ? "검색 결과가 없습니다." : "등록된 공지가 없습니다."} />
+        <Empty icon={<Megaphone />} title={q ? t("common.noResults") : t("board.notices.empty")} />
       )}
       <EditDialog
         table="notices"
@@ -64,7 +66,7 @@ export default function Notices() {
         onOpenChange={(o) => !o && setEdit(null)}
         row={edit?.row}
         defaults={defaults}
-        title={edit?.row ? "공지 수정" : "공지 작성"}
+        title={edit?.row ? t("board.notices.editTitle") : t("board.notices.write")}
       />
     </div>
   );

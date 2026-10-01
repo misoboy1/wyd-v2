@@ -1,10 +1,23 @@
 // 바로가기(Quick Menu) — 각 화면 요약(배지·요약·항목). 기존 dashNavInfo 이식
 import { useNavigate } from "react-router";
 import { ChevronRight, Lock } from "lucide-react";
-import { TEAM_NAMES, NO_TEAM, isTeamLead, roleRank, cmpStr, teamOf, teamRange, todayKST, type Dataset, type Volunteer } from "@wyd/shared";
+import {
+  TEAM_NAMES,
+  NO_TEAM,
+  isTeamLead,
+  roleRank,
+  cmpStr,
+  teamOf,
+  teamRange,
+  todayKST,
+  translate,
+  type Dataset,
+  type Volunteer,
+} from "@wyd/shared";
 import { NAV_ITEMS, type NavItem } from "@/lib/nav";
 import { useAuth } from "@/lib/auth";
-import { cn, num } from "@/lib/utils";
+import { cn } from "@/lib/utils";
+import { useT } from "@/lib/i18n";
 import { Progress } from "@/components/ui/misc";
 import { md, sortGori } from "@/components/gori/common";
 import type { Totals } from "./stats";
@@ -32,7 +45,9 @@ function volsByTeam(list: Volunteer[]) {
   return g;
 }
 
-function info(path: string, d: Data, T: Totals): Info {
+type Tr = ReturnType<typeof useT>;
+
+function info(path: string, d: Data, T: Totals, { t, label }: Tr): Info {
   switch (path) {
     case "/prep": {
       const list = d.prep.slice().sort((a, b) => (a.sort ?? 0) - (b.sort ?? 0) || a.id - b.id);
@@ -44,19 +59,23 @@ function info(path: string, d: Data, T: Totals): Info {
         .map((x) => "◦ " + x.title);
       return {
         badge: `${done}/${tot}`,
-        summary: `D-DAY 준비 ${tot}단계 중 ${done}단계 완료`,
+        summary: t("dash.quick.prepSummary", { tot, done }),
         tone: done >= tot ? "" : "amber",
-        items: next.length ? next : ["◦ 모든 단계 완료"],
+        items: next.length ? next : ["◦ " + t("dash.quick.prepAllDone")],
         progress: Math.round((done / tot) * 100),
       };
     }
     case "/gori": {
       const g = sortGori(d.gori),
         today = todayKST(),
-        t = g.find((x) => x.date === today);
+        cur = g.find((x) => x.date === today);
       return {
-        badge: g.length + "일",
-        summary: t ? `오늘: ${t.org} · ${t.rep}` : g.length ? `배정 기간 ${md(g[0].date)}~${md(g[g.length - 1].date)}` : "미등록",
+        badge: t("common.days", { n: g.length }),
+        summary: cur
+          ? t("dash.quick.goriToday", { org: cur.org, rep: cur.rep })
+          : g.length
+            ? t("dash.quick.goriRange", { from: md(g[0].date), to: md(g[g.length - 1].date) })
+            : t("dash.quick.goriNone"),
         items: g
           .filter((x) => x.date >= today)
           .slice(0, 5)
@@ -65,26 +84,26 @@ function info(path: string, d: Data, T: Totals): Info {
     }
     case "/org": {
       const bt = volsByTeam(d.volunteers);
-      const short = TEAM_NAMES.filter((t: string) => {
-        const r = teamRange(t);
-        return r && (bt[t] ?? []).length < r.min;
+      const short = TEAM_NAMES.filter((tm: string) => {
+        const r = teamRange(tm);
+        return r && (bt[tm] ?? []).length < r.min;
       });
       return {
-        badge: TEAM_NAMES.length + "개 팀",
-        summary: "WYD 봉사단 팀 중심 조직" + (short.length ? ` · 부족 ${short.length}팀` : ""),
+        badge: t("dash.quick.teams", { n: TEAM_NAMES.length }),
+        summary: short.length ? t("dash.quick.orgSummaryShort", { n: short.length }) : t("dash.quick.orgSummary"),
         tone: short.length ? "amber" : "",
-        items: TEAM_NAMES.slice(0, 6).map((t: string) => {
-          const l = bt[t] ?? [];
+        items: TEAM_NAMES.slice(0, 6).map((tm: string) => {
+          const l = bt[tm] ?? [];
           const ld = l.find((v) => isTeamLead(v.role));
-          return `◦ ${t} ${l.length}명` + (ld ? " · " + ld.name : "");
+          return `◦ ${tm} ${t("common.people", { n: l.length })}` + (ld ? " · " + ld.name : "");
         }),
       };
     }
     case "/schedule": {
       const s = d.schedule.slice().sort((a, b) => (a.sort ?? 0) - (b.sort ?? 0) || a.id - b.id);
       return {
-        badge: s.length + "건",
-        summary: s.length ? "교구대회·본대회 일정" : "일정 없음",
+        badge: t("common.count", { n: s.length }),
+        summary: s.length ? t("dash.quick.schedSummary") : t("dash.quick.schedNone"),
         items: s.slice(0, 3).map((x) => `${x.date} ${x.event || ""}`),
       };
     }
@@ -94,15 +113,16 @@ function info(path: string, d: Data, T: Totals): Info {
         use = f.filter((x) => x.status === "사용중");
       return {
         badge: `${av}/${f.length}`,
-        summary: `가용 ${av} · 사용중 ${use.length} · 전체 ${f.length}`,
+        summary: t("dash.quick.facSummary", { av, use: use.length, all: f.length }),
         tone: av ? "" : "red",
         items: use.length
           ? [
-              "사용중: " +
-                use
+              t("dash.quick.facInUse", {
+                list: use
                   .slice(0, 4)
                   .map((x) => x.name)
                   .join(", "),
+              }),
             ]
           : [],
       };
@@ -110,20 +130,22 @@ function info(path: string, d: Data, T: Totals): Info {
     case "/volunteers": {
       const bt = volsByTeam(d.volunteers),
         un = (bt[NO_TEAM] ?? []).length,
-        teams = TEAM_NAMES.filter((t: string) => bt[t]);
+        teams = TEAM_NAMES.filter((tm: string) => bt[tm]);
+      const p = { n: d.volunteers.length, teams: teams.length, un };
       return {
-        badge: d.volunteers.length + "명",
-        summary: `봉사자 ${d.volunteers.length}명 · ${teams.length}개 팀 배정` + (un ? ` · 팀 미배정 ${un}` : ""),
+        badge: t("common.people", { n: d.volunteers.length }),
+        summary: un ? t("dash.quick.volSummaryUn", p) : t("dash.quick.volSummary", p),
         tone: un ? "amber" : "",
-        items: teams.slice(0, 6).map((t: string) => `◦ ${t} ${bt[t].length}`),
+        items: teams.slice(0, 6).map((tm: string) => `◦ ${tm} ${bt[tm].length}`),
       };
     }
     case "/homestays": {
       const h = d.homestays,
         un = T.unmatched;
+      const p = { n: h.length, cap: T.hsCap, inHs: T.inHs, un };
       return {
-        badge: num(h.length) + "가정",
-        summary: `등록 ${num(h.length)}가정 · 수용 ${num(T.hsCap)}석 · 배정 ${num(T.inHs)}명` + (un ? ` · 미매칭 ${un}` : ""),
+        badge: t("dash.quick.families", { n: h.length }),
+        summary: un ? t("dash.quick.hsSummaryUn", p) : t("dash.quick.hsSummary", p),
         tone: un ? "amber" : "",
         items: h.slice(0, 6).map((x) => "◦ " + x.host),
       };
@@ -132,28 +154,36 @@ function info(path: string, d: Data, T: Totals): Info {
       const bc = new Map<string, number>();
       d.visitors.forEach((x) => bc.set(x.country, (bc.get(x.country) ?? 0) + 1));
       return {
-        badge: num(d.visitors.length) + "명",
-        summary: `${bc.size}개국 ${num(d.visitors.length)}명 · 미배정 ${num(T.unassigned)}명`,
+        badge: t("common.people", { n: d.visitors.length }),
+        summary: t("dash.quick.visSummary", { countries: bc.size, n: d.visitors.length, un: T.unassigned }),
         tone: T.unassigned ? "amber" : "",
         items: [...bc.entries()]
           .sort((a, b) => b[1] - a[1])
           .slice(0, 6)
-          .map(([k, n]) => `◦ ${k || "국가 미입력"} ${n}`),
+          .map(([k, n]) => `◦ ${k || t("dash.quick.noCountry")} ${n}`),
       };
     }
     case "/notices": {
       const n = d.notices.slice().sort((a, b) => String(b.date).localeCompare(String(a.date)) || b.id - a.id);
-      return { badge: n.length + "건", summary: n.length ? "공지사항" : "공지 없음", items: n.slice(0, 3).map((x) => "◦ " + x.title) };
+      return {
+        badge: t("common.count", { n: n.length }),
+        summary: n.length ? t("dash.quick.noticeSummary") : t("dash.quick.noticeNone"),
+        items: n.slice(0, 3).map((x) => "◦ " + x.title),
+      };
     }
     case "/posts": {
       const p = d.posts.slice().sort((a, b) => String(b.date).localeCompare(String(a.date)) || b.id - a.id);
-      return { badge: p.length + "건", summary: p.length ? "게시판 글" : "게시글 없음", items: p.slice(0, 3).map((x) => "◦ " + x.title) };
+      return {
+        badge: t("common.count", { n: p.length }),
+        summary: p.length ? t("dash.quick.postSummary") : t("dash.quick.postNone"),
+        items: p.slice(0, 3).map((x) => "◦ " + x.title),
+      };
     }
     case "/qna": {
       const un = d.qna.filter((x) => !x.answered);
       return {
-        badge: d.qna.length + "건",
-        summary: un.length ? `미답변 ${un.length}건 대기` : "모두 답변 완료",
+        badge: t("common.count", { n: d.qna.length }),
+        summary: un.length ? t("dash.quick.qnaPending", { n: un.length }) : t("dash.quick.qnaAllDone"),
         tone: un.length ? "red" : "",
         items: (un.length ? un : d.qna).slice(0, 3).map((x) => "◦ " + x.q),
       };
@@ -162,9 +192,9 @@ function info(path: string, d: Data, T: Totals): Info {
       const bc = new Map<string, number>();
       d.places.forEach((x) => bc.set(x.cat, (bc.get(x.cat) ?? 0) + 1));
       return {
-        badge: d.places.length + "곳",
-        summary: `추천 장소·지도 ${d.places.length}곳`,
-        items: [...bc.entries()].slice(0, 4).map(([k, n]) => `◦ ${k} ${n}`),
+        badge: t("dash.quick.places", { n: d.places.length }),
+        summary: t("dash.quick.placesSummary", { n: d.places.length }),
+        items: [...bc.entries()].slice(0, 4).map(([k, n]) => `◦ ${label("placeCat", k)} ${n}`),
       };
     }
   }
@@ -179,6 +209,7 @@ const TONE_CLS: Record<Tone, string> = {
 
 function NavCard({ item, i, locked, onClick }: { item: NavItem; i: Info | null; locked: boolean; onClick: () => void }) {
   const Icon = item.icon;
+  const { t, locale } = useT();
   return (
     <button
       type="button"
@@ -198,13 +229,13 @@ function NavCard({ item, i, locked, onClick }: { item: NavItem; i: Info | null; 
           <Icon className="size-4.5" />
         </span>
         <span className="min-w-0 flex-1">
-          <span className="block truncate text-[14.5px] font-semibold text-ink">{item.label}</span>
-          <span className="block truncate text-[11.5px] text-ink-3">{item.en}</span>
+          <span className="block truncate text-[14.5px] font-semibold text-ink">{t(item.label)}</span>
+          {locale !== "en" && <span className="block truncate text-[11.5px] text-ink-3">{translate("en", item.label)}</span>}
         </span>
         {locked ? (
           <span className="inline-flex items-center gap-1 rounded-full bg-surface-3 px-2 py-0.5 text-[11.5px] font-medium text-ink-3">
             <Lock className="size-3" />
-            로그인
+            {t("dash.quick.login")}
           </span>
         ) : (
           i?.badge && (
@@ -215,7 +246,7 @@ function NavCard({ item, i, locked, onClick }: { item: NavItem; i: Info | null; 
         )}
       </div>
       {locked ? (
-        <p className="mt-3 text-[12.5px] text-ink-3">로그인하면 볼 수 있습니다.</p>
+        <p className="mt-3 text-[12.5px] text-ink-3">{t("dash.quick.loginToView")}</p>
       ) : (
         i && (
           <>
@@ -234,7 +265,7 @@ function NavCard({ item, i, locked, onClick }: { item: NavItem; i: Info | null; 
         )
       )}
       <span className="mt-auto inline-flex items-center gap-0.5 pt-3 text-[12.5px] font-medium text-primary opacity-80 group-hover:opacity-100">
-        {locked ? "로그인" : "이동"}
+        {locked ? t("dash.quick.login") : t("dash.quick.go")}
         <ChevronRight className="size-3.5" />
       </span>
     </button>
@@ -244,11 +275,13 @@ function NavCard({ item, i, locked, onClick }: { item: NavItem; i: Info | null; 
 export function QuickMenu({ data, T }: { data: Data; T: Totals }) {
   const { user, setLoginOpen } = useAuth();
   const nav = useNavigate();
+  const tr = useT();
+  const { t } = tr;
   const items = NAV_ITEMS.filter((n) => n.path !== "/" && (!n.roles || (user && n.roles.includes(user.role))) && n.path !== "/admin/users");
   return (
     <section aria-labelledby="qm-title">
       <h2 id="qm-title" className="mb-3 text-[16px] font-semibold text-ink">
-        바로가기 <span className="text-[12.5px] font-normal text-ink-3">Quick Menu · 각 메뉴 요약 · 누르면 이동</span>
+        {t("dash.quick.title")} <span className="text-[12.5px] font-normal text-ink-3">{t("dash.quick.sub")}</span>
       </h2>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {items.map((n) => {
@@ -258,7 +291,7 @@ export function QuickMenu({ data, T }: { data: Data; T: Totals }) {
               key={n.path}
               item={n}
               locked={locked}
-              i={locked ? null : info(n.path, data, T)}
+              i={locked ? null : info(n.path, data, T, tr)}
               onClick={() => (locked ? setLoginOpen(true) : nav(n.path))}
             />
           );

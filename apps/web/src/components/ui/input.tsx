@@ -1,6 +1,7 @@
 import { forwardRef, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes, type TextareaHTMLAttributes } from "react";
 import { ChevronDown, Search, X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useT } from "@/lib/i18n";
 
 const base =
   "w-full rounded-lg border border-line-strong bg-surface px-3 text-[14px] text-ink placeholder:text-ink-3 transition-shadow focus:outline-none focus:border-primary focus:ring-3 focus:ring-[var(--ring)] disabled:opacity-60";
@@ -57,7 +58,7 @@ export function Field({
 export function SearchInput({
   value,
   onChange,
-  placeholder = "검색",
+  placeholder,
   className,
 }: {
   value: string;
@@ -65,14 +66,20 @@ export function SearchInput({
   placeholder?: string;
   className?: string;
 }) {
+  const { t } = useT();
   return (
     <div className={cn("relative min-w-0", className)}>
       <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-ink-3" />
-      <Input value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} className="pl-9 pr-8" />
+      <Input
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder ?? t("common.search")}
+        className="pl-9 pr-8"
+      />
       {value && (
         <button
           type="button"
-          aria-label="지우기"
+          aria-label={t("shell.ui.clear")}
           onClick={() => onChange("")}
           className="absolute top-1/2 right-2 -translate-y-1/2 rounded p-1 text-ink-3 hover:text-ink"
         >

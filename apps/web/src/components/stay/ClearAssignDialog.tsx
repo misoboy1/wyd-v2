@@ -6,7 +6,8 @@ import { Dialog } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { confirm } from "@/components/ui/confirm";
 import { errorMessage, unassignStays } from "@/lib/data";
-import { cn, num } from "@/lib/utils";
+import { cn } from "@/lib/utils";
+import { useT } from "@/lib/i18n";
 import { useStayIndex } from "./useStayIndex";
 
 type Scope = "orphan" | "unconfirmed" | "hs" | "room" | "all";
@@ -21,6 +22,7 @@ export function ClearAssignDialog({
   onOpenChange: (v: boolean) => void;
   onBack?: () => void;
 }) {
+  const { t } = useT();
   const qc = useQueryClient();
   const { I, visitors } = useStayIndex();
   const [scope, setScope] = useState<Scope>("orphan");
@@ -36,35 +38,31 @@ export function ClearAssignDialog({
     [I, visitors],
   );
   const opts: [Scope, string][] = [
-    ["orphan", "연결 끊김만"],
-    ["unconfirmed", "상태가 '확정'이 아닌 방문자"],
-    ["hs", "홈스테이 배정 전체"],
-    ["room", "교리실 배정 전체"],
-    ["all", "모든 배정"],
+    ["orphan", t("stay.clear.orphan")],
+    ["unconfirmed", t("stay.clear.unconfirmed")],
+    ["hs", t("stay.clear.hs")],
+    ["room", t("stay.clear.room")],
+    ["all", t("stay.clear.all")],
   ];
   const label = opts.find((o) => o[0] === scope)![1];
 
   const run = async () => {
     if (!cnt[scope]) {
-      toast.info("해제할 대상이 없습니다.");
+      toast.info(t("stay.clear.nothing"));
       return;
     }
     const ok = await confirm({
-      title: "배정 일괄 해제",
+      title: t("stay.clear.title"),
       danger: true,
-      confirmText: "해제 실행",
-      typeToConfirm: "해제",
-      body: (
-        <>
-          「{label}」 범위의 방문자 <b>{num(cnt[scope])}명</b>이 '미배정'이 됩니다. 되돌릴 수 없습니다.
-        </>
-      ),
+      confirmText: t("stay.clear.run"),
+      typeToConfirm: t("stay.clear.typeWord"),
+      body: t("stay.clear.body", { scope: label, n: cnt[scope] }),
     });
     if (!ok) return;
     setBusy(true);
     try {
       const n = await unassignStays(qc, scope);
-      toast.success(`배정 해제 ${num(n)}명 완료`);
+      toast.success(t("stay.clear.done", { n }));
       onOpenChange(false);
     } catch (e) {
       toast.error(errorMessage(e));
@@ -81,29 +79,29 @@ export function ClearAssignDialog({
       title={
         <span className="inline-flex items-center gap-2">
           <Eraser className="size-4.5" />
-          배정 일괄 해제
+          {t("stay.clear.title")}
         </span>
       }
-      description="자동 배정을 다시 돌리기 전에 기존 배정을 비울 때 사용합니다. 선택한 범위의 방문자가 '미배정'이 됩니다."
+      description={t("stay.clear.desc")}
       footer={
         <>
           {onBack && (
             <Button variant="ghost" className="mr-auto" onClick={onBack} disabled={busy}>
               <ChevronLeft />
-              뒤로
+              {t("common.back")}
             </Button>
           )}
           <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={busy}>
-            취소
+            {t("common.cancel")}
           </Button>
           <Button variant="danger" loading={busy} disabled={!cnt[scope]} onClick={() => void run()}>
-            해제 실행
+            {t("stay.clear.run")}
           </Button>
         </>
       }
     >
       <fieldset>
-        <legend className="mb-2 text-[13px] font-medium text-ink-2">해제 범위</legend>
+        <legend className="mb-2 text-[13px] font-medium text-ink-2">{t("stay.clear.scope")}</legend>
         <div className="space-y-1.5">
           {opts.map(([k, l]) => (
             <label
@@ -122,7 +120,9 @@ export function ClearAssignDialog({
                 className="accent-[var(--primary)]"
               />
               <span className="flex-1 text-ink">{l}</span>
-              <span className={cn("tabular text-[13px] font-semibold", cnt[k] ? "text-ink" : "text-ink-3")}>{num(cnt[k])}명</span>
+              <span className={cn("tabular text-[13px] font-semibold", cnt[k] ? "text-ink" : "text-ink-3")}>
+                {t("common.people", { n: cnt[k] })}
+              </span>
             </label>
           ))}
         </div>

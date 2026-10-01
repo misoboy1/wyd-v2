@@ -4,6 +4,8 @@ import { toast } from "sonner";
 import { Dialog } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { conflictBus, errorMessage, type ConflictInfo } from "@/lib/data";
+import { useT } from "@/lib/i18n";
+import { fieldLabel } from "@/components/form/RecordForm";
 
 const SKIP = new Set(["id", "version", "updatedAt", "slots"]);
 const show = (v: unknown) => toStr(v) || "—";
@@ -12,6 +14,7 @@ const show = (v: unknown) => toStr(v) || "—";
 export function ConflictDialog() {
   const [c, setC] = useState<ConflictInfo | null>(null);
   const [busy, setBusy] = useState(false);
+  const { t, td } = useT();
   useEffect(() => conflictBus.on(setC), []);
   if (!c) return null;
   const keys = Object.keys(c.mine).filter((k) => !SKIP.has(k) && show(c.mine[k]) !== show(c.current[k]));
@@ -21,7 +24,7 @@ export function ConflictDialog() {
       const m: Record<string, unknown> = {};
       keys.forEach((k) => (m[k] = c.mine[k]));
       await c.retry(m);
-      toast.success("내 변경을 최신 내용 위에 다시 저장했습니다.");
+      toast.success(t("shell.conflict.reapplied"));
       setC(null);
     } catch (e) {
       toast.error(errorMessage(e));
@@ -34,16 +37,16 @@ export function ConflictDialog() {
       open
       onOpenChange={(o) => !o && setC(null)}
       size="md"
-      title="다른 사용자가 먼저 수정했습니다"
-      description="화면은 최신 내용으로 바뀌었습니다. 아래 항목에서 내 변경을 다시 적용할지 선택하세요."
+      title={t("shell.conflict.title")}
+      description={t("shell.conflict.desc")}
       footer={
         <>
           <Button variant="ghost" onClick={() => setC(null)}>
-            최신 내용 유지
+            {t("shell.conflict.keepLatest")}
           </Button>
           {keys.length > 0 && (
             <Button variant="primary" loading={busy} onClick={() => void reapply()}>
-              내 변경 다시 적용 ({keys.length})
+              {t("shell.conflict.reapply", { n: keys.length })}
             </Button>
           )}
         </>
@@ -54,15 +57,15 @@ export function ConflictDialog() {
           <table className="w-full text-[13px]">
             <thead className="bg-surface-2 text-ink-3">
               <tr>
-                <th className="px-3 py-2 text-left">항목</th>
-                <th className="px-3 py-2 text-left">최신(서버)</th>
-                <th className="px-3 py-2 text-left">내 변경</th>
+                <th className="px-3 py-2 text-left">{t("shell.conflict.field")}</th>
+                <th className="px-3 py-2 text-left">{t("shell.conflict.latest")}</th>
+                <th className="px-3 py-2 text-left">{t("shell.conflict.mine")}</th>
               </tr>
             </thead>
             <tbody>
               {keys.map((k) => (
                 <tr key={k} className="border-t border-line">
-                  <td className="px-3 py-2 text-ink-3">{k}</td>
+                  <td className="px-3 py-2 text-ink-3">{fieldLabel(td, c.table, k)}</td>
                   <td className="px-3 py-2">{show(c.current[k])}</td>
                   <td className="px-3 py-2 font-medium text-primary">{show(c.mine[k])}</td>
                 </tr>
@@ -71,7 +74,7 @@ export function ConflictDialog() {
           </table>
         </div>
       ) : (
-        <p className="text-[14px] text-ink-2">내 변경 내용이 최신 내용과 같습니다. 그대로 두면 됩니다.</p>
+        <p className="text-[14px] text-ink-2">{t("shell.conflict.same")}</p>
       )}
     </Dialog>
   );

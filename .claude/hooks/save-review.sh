@@ -20,7 +20,9 @@ if (!text) {
     for (let i = lines.length - 1; i >= 0 && !text; i--) {
       const l = JSON.parse(lines[i]);
       if (l.type !== "assistant" || !Array.isArray(l.message?.content)) continue;
-      text = l.message.content.filter((b) => b.type === "text").map((b) => b.text).join("\n");
+      // 보고서를 SubagentHandback 도구 호출(input.message)로 돌려주는 경우도 지원
+      const handback = l.message.content.find((b) => b.type === "tool_use" && b.name === "SubagentHandback" && typeof b.input?.message === "string");
+      text = handback ? handback.input.message : l.message.content.filter((b) => b.type === "text").map((b) => b.text).join("\n");
     }
   } catch {}
 }

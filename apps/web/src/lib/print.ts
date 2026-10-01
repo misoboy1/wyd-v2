@@ -1,4 +1,5 @@
 import { PARISH, todayKST, toStr } from "@wyd/shared";
+import { getLocale, tt } from "./i18n";
 
 export interface PrintSection {
   heading?: string;
@@ -26,10 +27,10 @@ export function printDocument(
       (s) => `
     ${s.heading ? `<h2>${esc(s.heading)}</h2>` : ""}${s.note ? `<p class="note">${esc(s.note)}</p>` : ""}
     <table><thead><tr>${s.columns.map((c) => `<th>${esc(c)}</th>`).join("")}</tr></thead>
-    <tbody>${s.rows.map((r) => `<tr>${r.map((c) => `<td>${esc(c)}</td>`).join("")}</tr>`).join("") || `<tr><td colspan="${s.columns.length}" class="empty">항목 없음</td></tr>`}</tbody></table>`,
+    <tbody>${s.rows.map((r) => `<tr>${r.map((c) => `<td>${esc(c)}</td>`).join("")}</tr>`).join("") || `<tr><td colspan="${s.columns.length}" class="empty">${esc(tt("shell.print.empty"))}</td></tr>`}</tbody></table>`,
     )
     .join("");
-  const html = `<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>${esc(title)}</title><style>
+  const html = `<!doctype html><html lang="${getLocale()}"><head><meta charset="utf-8"><title>${esc(title)}</title><style>
     @page{size:A4;margin:14mm}*{box-sizing:border-box}
     body{font-family:"Pretendard","Malgun Gothic",system-ui,sans-serif;color:#111827;font-size:11px;margin:0}
     header{border-bottom:2px solid #1b4fc4;padding-bottom:8px;margin-bottom:12px}
@@ -41,7 +42,7 @@ export function printDocument(
     table{width:100%;border-collapse:collapse;margin-bottom:6px;page-break-inside:auto}tr{page-break-inside:avoid}
     th{background:#f1f5f9;text-align:left;font-weight:600;color:#374151}
     th,td{border:1px solid #e5e7eb;padding:4px 6px;vertical-align:top;white-space:pre-wrap}.empty{color:#9ca3af;text-align:center}
-  </style></head><body><header><h1>${esc(title)}</h1><div class="meta">${esc(PARISH.name)} · 2027 WYD${opts.subtitle ? " · " + esc(opts.subtitle) : ""} · 출력일 ${esc(todayKST())}</div></header>${kpi}${body}</body></html>`;
+  </style></head><body><header><h1>${esc(title)}</h1><div class="meta">${esc(PARISH.name)} · 2027 WYD${opts.subtitle ? " · " + esc(opts.subtitle) : ""} · ${esc(tt("shell.print.printedOn", { date: todayKST() }))}</div></header>${kpi}${body}</body></html>`;
   const f = document.createElement("iframe");
   f.style.cssText = "position:fixed;right:0;bottom:0;width:0;height:0;border:0";
   document.body.appendChild(f);

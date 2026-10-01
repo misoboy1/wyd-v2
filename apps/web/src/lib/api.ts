@@ -1,3 +1,5 @@
+import { getLocale, tt } from "./i18n";
+
 // API 클라이언트 — 쿠키 인증(httpOnly), 쓰기 요청 X-WYD 헤더(CSRF), 401 시 토큰 1회 갱신 후 재시도
 export class ApiError extends Error {
   constructor(
@@ -28,7 +30,7 @@ export const setSessionExpiredHandler = (fn: () => void) => {
 
 export async function request<T = any>(method: string, path: string, body?: unknown, retry = true): Promise<T> {
   const isForm = typeof FormData !== "undefined" && body instanceof FormData;
-  const headers: Record<string, string> = { "ngrok-skip-browser-warning": "1" };
+  const headers: Record<string, string> = { "ngrok-skip-browser-warning": "1", "accept-language": getLocale() };
   if (method !== "GET") headers["x-wyd"] = "1";
   if (body !== undefined && !isForm) headers["content-type"] = "application/json";
   let res: Response;
@@ -40,7 +42,7 @@ export async function request<T = any>(method: string, path: string, body?: unkn
       body: body === undefined ? undefined : isForm ? body : JSON.stringify(body),
     });
   } catch {
-    throw new ApiError(0, "NETWORK", "서버에 연결할 수 없습니다. 인터넷 연결을 확인하세요.");
+    throw new ApiError(0, "NETWORK", tt("err.network"));
   }
   if (res.status === 401 && retry && !path.startsWith("/auth/")) {
     if (await refresh()) return request<T>(method, path, body, false);
@@ -55,9 +57,7 @@ export async function request<T = any>(method: string, path: string, body?: unkn
   }
   if (!res.ok) {
     const code = (data && data.error) || (res.status === 409 ? "CONFLICT" : "HTTP_" + res.status);
-    const msg =
-      (data && typeof data.message === "string" && data.message) ||
-      (res.status >= 500 ? "서버 오류가 발생했습니다. 잠시 후 다시 시도하세요." : "요청을 처리하지 못했습니다.");
+    const msg = (data && typeof data.message === "string" && data.message) || (res.status >= 500 ? tt("err.server") : tt("err.request"));
     throw new ApiError(res.status, code, msg, data?.detail);
   }
   return data as T;

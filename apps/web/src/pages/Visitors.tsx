@@ -1,7 +1,7 @@
 import { useCallback, useDeferredValue, useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 import { ClipboardPaste, Download, FileDown, Languages, Plus, Printer, Users, X, Zap } from "lucide-react";
-import { normSex, PARISH, VIRTUAL, type Facility, type StayIndex, type Visitor } from "@wyd/shared";
+import { normSex, PARISH, VIRTUAL, type Facility, type MsgKey, type StayIndex, type Visitor } from "@wyd/shared";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -14,7 +14,8 @@ import { PasteImport, type PasteDef } from "@/components/form/PasteImport";
 import { useCan } from "@/lib/auth";
 import { downloadCSV } from "@/lib/csv";
 import { printDocument } from "@/lib/print";
-import { cmp, matchQuery, num } from "@/lib/utils";
+import { cmp, matchQuery } from "@/lib/utils";
+import { useT } from "@/lib/i18n";
 import { useStayIndex } from "@/components/stay/useStayIndex";
 import { VisitorEditDialog } from "@/components/stay/VisitorEditDialog";
 import { AutoAssignDialog } from "@/components/stay/AutoAssignDialog";
@@ -37,41 +38,36 @@ import {
   visitorCols,
   visZone,
   type PlaceKind,
+  type Tr,
   type VisGroupBy,
 } from "@/components/stay/stay";
 
 type SortKey = "pid" | "gno" | "name" | "sex" | "country" | "lang" | "room" | "stay" | "role" | "status" | "note";
 type KindFilter = "all" | PlaceKind;
 
-const PASTE: PasteDef = {
-  label: "방문자(순례자)",
+const pasteDef = ({ t }: Tr): PasteDef => ({
+  label: t("stay.vis.pasteLabel"),
   table: "visitors",
   cols: [
-    ["gno", "그룹(G1)"],
-    ["name", "이름"],
-    ["sex", "성별(남/여)"],
-    ["country", "국가"],
-    ["lang", "언어"],
-    ["stay", "기간"],
-    ["role", "역할"],
-    ["status", "상태"],
-    ["tel", "연락처"],
-    ["note", "비고"],
+    ["gno", t("stay.vis.pasteGno")],
+    ["name", t("stay.col.name")],
+    ["sex", t("stay.vis.pasteSex")],
+    ["country", t("stay.col.country")],
+    ["lang", t("stay.col.lang")],
+    ["stay", t("stay.col.period")],
+    ["role", t("stay.col.role")],
+    ["status", t("stay.col.status")],
+    ["tel", t("stay.col.tel")],
+    ["note", t("stay.col.note")],
   ],
   // 성별 표기(남자·M·female 등) 정규화, 상태 비면 기본값
   mapRow: (o) => ({ ...o, sex: normSex(o.sex), ...(o.status ? {} : { status: "확정" }) }),
-};
-const PRINT_GROUPERS: [string, string][] = [
-  ["gno", "그룹"],
-  ["country", "국가"],
-  ["sex", "성별"],
-  ["lang", "언어"],
-  ["stay", "기간"],
-  ["status", "상태"],
-  ["stayplace", "숙소"],
-];
+});
+const PRINT_GROUPERS: VisGroupBy[] = ["gno", "country", "sex", "lang", "stay", "status", "stayplace"];
 
 export default function Visitors() {
+  const tr = useT();
+  const { t, num } = tr;
   const { I, visitors, isLoading } = useStayIndex();
   const { isAdmin, canWrite, user } = useCan();
   const editable = canWrite("visitors");
@@ -159,12 +155,12 @@ export default function Visitors() {
         (hsId == null || v.homestayId === hsId) &&
         matchQuery(dq, hay.get(v.id)),
     );
-    const val = (v: Visitor) => (sort.key === "room" ? stayText(v, I) : (v as any)[sort.key]);
+    const val = (v: Visitor) => (sort.key === "room" ? stayText(v, I, tr) : (v as any)[sort.key]);
     return list.sort((a, b) => cmp(val(a), val(b)) * sort.dir);
-  }, [visitors, I, kind, zone, roomId, hsId, dq, hay, sort]);
+  }, [visitors, I, kind, zone, roomId, hsId, dq, hay, sort, tr]);
 
   // 묶어보기: 필터 결과 전체 기준으로 묶음 순서·인원을 구하고, 현재 쪽만 소제목과 함께 표시
-  const keyOf = useCallback((v: Visitor, by: string) => visGroupKey(v, by as VisGroupBy, I), [I]);
+  const keyOf = useCallback((v: Visitor, by: string) => visGroupKey(v, by as VisGroupBy, I, tr), [I, tr]);
   const grouped = useMemo(() => {
     if (group === "none") return null;
     const { order, count } = groupOrder(sorted, (v) => keyOf(v, group));
@@ -178,12 +174,14 @@ export default function Visitors() {
 
   const stats = useMemo(() => {
     const lang = new Map<string, number>();
-    visitors.forEach((x) => lang.set(x.lang || "미입력", (lang.get(x.lang || "미입력") || 0) + 1));
+    visitors.forEach((x) => lang.set(x.lang || "", (lang.get(x.lang || "") || 0) + 1));
     return { langs: [...lang].sort((a, b) => b[1] - a[1]), countries: new Set(visitors.map((x) => x.country).filter(Boolean)).size };
   }, [visitors]);
   const allSortedByPid = useMemo(() => visitors.slice().sort((a, b) => cmp(a.pid, b.pid)), [visitors]);
-  const cols = useMemo(() => visitorCols(I), [I]);
-  const printRowsAll = useMemo(() => sortedAll(visitors, sort, I), [visitors, sort, I]);
+  const cols = useMemo(() => visitorCols(I, tr), [I, tr]);
+  const printRowsAll = useMemo(() => sortedAll(visitors, sort, I, tr), [visitors, sort, I, tr]);
+  const paste = useMemo(() => pasteDef(tr), [tr]);
+  const groupLabel = group !== "none" ? t(VIS_GROUP_LABEL[group]) : "";
 
   const columns = useVisitorColumns({
     I,
@@ -197,14 +195,14 @@ export default function Visitors() {
 
   const exportCsv = (rows: Visitor[], suffix = "") =>
     downloadCSV(
-      `${PARISH.name}_방문자${suffix}`,
+      `${PARISH.name}_${t("stay.vis.file")}${suffix}`,
       cols.map((c) => c[0]),
       applyCols(cols, rows),
     );
   const printRows = (title: string, rows: Visitor[], subtitle?: string) =>
     printDocument(title, [{ columns: cols.map((c) => c[0]), rows: applyCols(cols, rows) }], {
       subtitle,
-      kpis: [["총", rows.length + "명"]],
+      kpis: [[t("stay.vis.kpiTotal"), t("common.people", { n: rows.length })]],
     });
   const filtered = sorted.length !== visitors.length;
   const room = roomId != null ? I.facilityById.get(roomId) : undefined;
@@ -228,11 +226,11 @@ export default function Visitors() {
     <div className="space-y-4">
       <PageHeader
         icon={<Users />}
-        title="방문자(순례자) 명단"
+        title={t("stay.vis.title")}
         subtitle={
           isHost
-            ? "우리 가정에 배정된 방문자"
-            : `1인 1행 · 총 ${num(visitors.length)}명 / 목표 ${num(VIRTUAL.target.visitors)}명 · ${stats.countries}개국 · 검색·숙소 필터·쪽 단위 표시`
+            ? t("stay.vis.subtitleHost")
+            : t("stay.vis.subtitle", { total: visitors.length, target: VIRTUAL.target.visitors, countries: stats.countries })
         }
         actions={
           <>
@@ -240,50 +238,56 @@ export default function Visitors() {
               trigger={
                 <Button>
                   <FileDown />
-                  내보내기
+                  {t("stay.ui.export")}
                 </Button>
               }
             >
               <MenuItem icon={<Download />} onSelect={() => exportCsv(allSortedByPid)}>
-                전체 CSV 내려받기
+                {t("stay.vis.csvAll")}
               </MenuItem>
               {filtered && (
-                <MenuItem icon={<Download />} onSelect={() => exportCsv(sorted, "_검색결과")}>
-                  검색 결과만 CSV ({num(sorted.length)}명)
+                <MenuItem icon={<Download />} onSelect={() => exportCsv(sorted, t("stay.vis.fileFiltered"))}>
+                  {t("stay.vis.csvFiltered", { n: sorted.length })}
                 </MenuItem>
               )}
               <MenuSep />
-              <MenuItem icon={<Printer />} onSelect={() => printRows(`${PARISH.name} 방문자(순례자) 명단`, allSortedByPid)}>
-                전체 인쇄 / PDF
+              <MenuItem icon={<Printer />} onSelect={() => printRows(t("stay.vis.printTitle", { parish: PARISH.name }), allSortedByPid)}>
+                {t("stay.ui.printAll")}
               </MenuItem>
               {filtered && (
                 <MenuItem
                   icon={<Printer />}
-                  onSelect={() => printRows(`${PARISH.name} 방문자 명단 · 검색 결과`, sorted, q ? `검색: ${q}` : undefined)}
+                  onSelect={() =>
+                    printRows(
+                      t("stay.vis.printTitleFiltered", { parish: PARISH.name }),
+                      sorted,
+                      q ? t("stay.vis.printSubSearch", { q }) : undefined,
+                    )
+                  }
                 >
-                  검색 결과만 인쇄
+                  {t("stay.vis.printFiltered")}
                 </MenuItem>
               )}
               <MenuItem icon={<Printer />} onSelect={() => setPrintOpen(true)}>
-                묶음별 선택 인쇄…
+                {t("stay.vis.printGroups")}
               </MenuItem>
             </Menu>
             {editable && (
               <Button onClick={() => setPasteOpen(true)}>
                 <ClipboardPaste />
-                엑셀 붙여넣기
+                {t("stay.ui.paste")}
               </Button>
             )}
             {isAdmin && (
               <Button variant="soft" onClick={() => setAaOpen(true)}>
                 <Zap />
-                자동 배정
+                {t("stay.ui.autoAssign")}
               </Button>
             )}
             {editable && (
               <Button variant="primary" onClick={() => setEdit({ row: null })}>
                 <Plus />
-                추가
+                {t("common.add")}
               </Button>
             )}
           </>
@@ -292,42 +296,41 @@ export default function Visitors() {
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
         <Stat
-          label="총 방문자"
-          value={`${num(visitors.length)}명`}
-          hint={isHost ? undefined : `목표 ${num(VIRTUAL.target.visitors)}명 · ${stats.countries}개국`}
+          label={t("stay.vis.statTotal")}
+          value={t("common.people", { n: visitors.length })}
+          hint={isHost ? undefined : t("stay.vis.statTotalHint", { target: VIRTUAL.target.visitors, countries: stats.countries })}
           onClick={() => setParam("kind", "all")}
         />
-        <Stat label="교리실 배정" value={num(I.inRoom)} tone="primary" onClick={() => setParam("kind", "room")} />
-        <Stat label="홈스테이 배정" value={num(I.inHs)} tone="gold" onClick={() => setParam("kind", "hs")} />
-        <Stat label="미배정" value={num(I.unassigned)} tone={I.unassigned ? "warn" : undefined} onClick={() => setParam("kind", "none")} />
+        <Stat label={t("stay.vis.statRoom")} value={num(I.inRoom)} tone="primary" onClick={() => setParam("kind", "room")} />
+        <Stat label={t("stay.vis.statHs")} value={num(I.inHs)} tone="gold" onClick={() => setParam("kind", "hs")} />
         <Stat
-          label="연결 끊김"
+          label={t("stay.vis.statNone")}
+          value={num(I.unassigned)}
+          tone={I.unassigned ? "warn" : undefined}
+          onClick={() => setParam("kind", "none")}
+        />
+        <Stat
+          label={t("stay.vis.statOrphan")}
           value={num(I.orphan)}
           tone={I.orphan ? "bad" : undefined}
-          hint={I.orphan ? "편집에서 숙소를 다시 지정" : "없음"}
+          hint={I.orphan ? t("stay.vis.statOrphanHint") : t("common.none")}
           onClick={() => setParam("kind", "orphan")}
           className="max-lg:col-span-2 max-sm:col-span-1"
         />
       </div>
 
-      <TeamRoster
-        icon="🤝"
-        title="환대팀 명단"
-        desc="순례자 관리·소통, 입소식·퇴소식, 통역 배정, 숙소 배치·안내 (3~4명)"
-        teamName="환대팀"
-        keywords={["환대팀"]}
-      />
+      <TeamRoster icon="🤝" title={t("stay.vis.teamTitle")} desc={t("stay.vis.teamDesc")} teamName="환대팀" keywords={["환대팀"]} />
 
       {stats.langs.length > 0 && (
         <Card className="p-4">
           <div className="mb-2.5 flex items-center gap-2 text-[14px] font-semibold text-ink">
             <Languages className="size-4 text-ink-3" />
-            언어별 집계 <span className="text-[12.5px] font-normal text-ink-3">소통 담당·통역 배치 기준</span>
+            {t("stay.vis.langStats")} <span className="text-[12.5px] font-normal text-ink-3">{t("stay.vis.langStatsSub")}</span>
           </div>
           <div className="flex flex-wrap gap-1.5">
             {stats.langs.map(([l, n]) => (
               <Badge key={l} tone="gray">
-                {l} {num(n)}명
+                {l || t("stay.vis.langUnset")} {t("common.people", { n })}
               </Badge>
             ))}
           </div>
@@ -337,15 +340,10 @@ export default function Visitors() {
       {/* 도구 모음(검색·필터) */}
       <Card className="space-y-2.5 p-3 lg:sticky lg:top-[4.5rem] lg:z-10">
         <div className="flex flex-wrap items-center gap-2">
-          <SearchInput
-            value={q}
-            onChange={(v) => setParam("q", v)}
-            placeholder="검색: 이름·번호·그룹·국가·언어·연락처·숙소 (띄어쓰기로 여러 조건)"
-            className="min-w-56 flex-1"
-          />
+          <SearchInput value={q} onChange={(v) => setParam("q", v)} placeholder={t("stay.vis.search")} className="min-w-56 flex-1" />
           {zones.length > 0 && (
-            <Select aria-label="구역" value={zone} onChange={(e) => setParam("zone", e.target.value)} className="w-44">
-              <option value="">전체 구역 ({zones.length})</option>
+            <Select aria-label={t("stay.col.zone")} value={zone} onChange={(e) => setParam("zone", e.target.value)} className="w-44">
+              <option value="">{t("stay.ui.zoneAll", { count: zones.length })}</option>
               {zones.map(([z, n]) => (
                 <option key={z} value={z}>
                   {z} ({n})
@@ -355,34 +353,36 @@ export default function Visitors() {
           )}
         </div>
         <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-          <span className="text-[12.5px] text-ink-3">숙소</span>
+          <span className="text-[12.5px] text-ink-3">{t("stay.vis.filterStay")}</span>
           <Segmented
             value={kind}
             onChange={(v) => setParam("kind", v)}
             options={[
-              { value: "all", label: "전체", count: visitors.length },
-              { value: "none", label: "미배정", count: I.unassigned },
-              { value: "room", label: "교리실", count: I.inRoom },
-              { value: "hs", label: "홈스테이", count: I.inHs },
-              ...(I.orphan || kind === "orphan" ? [{ value: "orphan" as const, label: "연결 끊김", count: I.orphan }] : []),
+              { value: "all", label: t("common.all"), count: visitors.length },
+              { value: "none", label: t("stay.place.unassigned"), count: I.unassigned },
+              { value: "room", label: t("stay.place.roomKind"), count: I.inRoom },
+              { value: "hs", label: t("stay.place.hsKind"), count: I.inHs },
+              ...(I.orphan || kind === "orphan" ? [{ value: "orphan" as const, label: t("stay.place.orphan"), count: I.orphan }] : []),
             ]}
           />
         </div>
         <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-          <span className="text-[12.5px] text-ink-3">묶어보기</span>
+          <span className="text-[12.5px] text-ink-3">{t("stay.vis.filterGroup")}</span>
           <Segmented
             value={group}
             onChange={(v) => setParam("group", v)}
-            options={VIS_GROUPS.map(([value, label]) => ({ value, label }))}
+            options={VIS_GROUPS.map(([value, key]) => ({ value, label: t(key) }))}
           />
         </div>
         {(room || hs || roomId != null || hsId != null) && (
           <div className="flex flex-wrap items-center gap-2">
             <Badge tone="blue" className="py-1 text-[12.5px]">
-              {roomId != null ? `교리실: ${room ? roomLabel(room) : "#" + roomId}` : `홈스테이: ${hs ? hsLabel(hs) : "#" + hsId}`}
+              {roomId != null
+                ? t("stay.vis.chipRoom", { label: room ? roomLabel(room) : "#" + roomId })
+                : t("stay.vis.chipHs", { label: hs ? hsLabel(hs) : "#" + hsId })}
               <button
                 type="button"
-                aria-label="숙소 조건 지우기"
+                aria-label={t("stay.vis.chipClear")}
                 onClick={() => {
                   setParam("room", "");
                   setParam("hs", "");
@@ -394,30 +394,26 @@ export default function Visitors() {
             </Badge>
             {hs && (
               <Button size="sm" variant="ghost" onClick={() => navigate(`/homestays?focus=${hs.id}&from=visitors`)}>
-                이 가정 정보 보기 ›
+                {t("stay.vis.viewHs")}
               </Button>
             )}
           </div>
         )}
       </Card>
 
-      {group !== "none" && (
-        <p className="-mt-1 px-1 text-[12px] text-ink-3">
-          💡 각 {VIS_GROUP_LABEL[group]} 제목줄의 <b>인쇄</b> / <b>CSV</b> 버튼으로 해당 {VIS_GROUP_LABEL[group]}만 따로 출력할 수 있습니다.
-        </p>
-      )}
+      {group !== "none" && <p className="-mt-1 px-1 text-[12px] text-ink-3">{t("stay.vis.groupTip", { group: groupLabel })}</p>}
 
-      <Pager total={list.length} unit="명" page={pg.p} size={size} onPage={setPage} onSize={setSize} />
+      <Pager total={list.length} unit="people" page={pg.p} size={size} onPage={setPage} onSize={setSize} />
 
       {!visitors.length ? (
         <Card>
-          <Empty icon={<Users />} title={isHost ? "아직 배정된 방문자가 없습니다" : "등록된 방문자가 없습니다"}>
-            {editable ? "＋ 추가 또는 엑셀 붙여넣기로 방문자를 등록하세요." : null}
+          <Empty icon={<Users />} title={isHost ? t("stay.vis.emptyHost") : t("stay.vis.empty")}>
+            {editable ? t("stay.vis.emptyHint") : null}
           </Empty>
         </Card>
       ) : !list.length ? (
         <Card>
-          <Empty title="조건에 맞는 방문자가 없습니다.">검색어나 필터를 바꿔 보세요.</Empty>
+          <Empty title={t("stay.vis.noMatch")}>{t("stay.ui.noMatchHint")}</Empty>
         </Card>
       ) : grouped ? (
         <div className="space-y-3">
@@ -425,7 +421,7 @@ export default function Visitors() {
             <Card key={k + i} className="overflow-hidden">
               <div className="flex flex-wrap items-center gap-2 border-b border-line bg-surface-2/60 px-4 py-2.5">
                 <b className="text-[14px] text-ink">{k}</b>
-                <span className="text-[12.5px] text-ink-3">· {num(grouped.count.get(k) || 0)}명</span>
+                <span className="text-[12.5px] text-ink-3">· {t("common.people", { n: grouped.count.get(k) || 0 })}</span>
                 <span className="flex-1" />
                 <Button
                   size="sm"
@@ -433,14 +429,14 @@ export default function Visitors() {
                   onClick={() => {
                     const all = list.filter((v) => keyOf(v, group) === k);
                     printRows(
-                      `${PARISH.name} 방문자 명단 · ${VIS_GROUP_LABEL[group]} [${k}]`,
+                      t("stay.vis.printTitleGroup", { parish: PARISH.name, group: groupLabel, key: k }),
                       all,
-                      `${VIS_GROUP_LABEL[group]} 기준 · 총 ${all.length}명`,
+                      t("stay.vis.printSubGroup", { group: groupLabel, total: t("common.people", { n: all.length }) }),
                     );
                   }}
                 >
                   <Printer />
-                  인쇄
+                  {t("common.print")}
                 </Button>
                 <Button
                   size="sm"
@@ -448,7 +444,7 @@ export default function Visitors() {
                   onClick={() =>
                     exportCsv(
                       list.filter((v) => keyOf(v, group) === k),
-                      `_${VIS_GROUP_LABEL[group]}_${k}`,
+                      `_${groupLabel}_${k}`,
                     )
                   }
                 >
@@ -467,17 +463,17 @@ export default function Visitors() {
         </Card>
       )}
 
-      {pg.pages > 1 && <Pager total={list.length} unit="명" page={pg.p} size={size} onPage={setPage} onSize={setSize} />}
+      {pg.pages > 1 && <Pager total={list.length} unit="people" page={pg.p} size={size} onPage={setPage} onSize={setSize} />}
 
       <VisitorEditDialog open={!!edit} onOpenChange={(o) => !o && setEdit(null)} row={edit?.row ?? null} />
       {isAdmin && <AutoAssignDialog open={aaOpen} onOpenChange={setAaOpen} />}
-      {editable && <PasteImport def={PASTE} open={pasteOpen} onOpenChange={setPasteOpen} />}
+      {editable && <PasteImport def={paste} open={pasteOpen} onOpenChange={setPasteOpen} />}
       <PrintPicker
         open={printOpen}
         onOpenChange={setPrintOpen}
-        label="방문자"
-        unit="명"
-        groupers={PRINT_GROUPERS}
+        label={t("stay.vis.printLabel")}
+        unit="people"
+        groupers={PRINT_GROUPERS.map((g) => [g, t(VIS_GROUP_LABEL[g])])}
         keyOf={keyOf}
         rows={printRowsAll}
         cols={cols}
@@ -496,8 +492,8 @@ export default function Visitors() {
 }
 
 /** 화면 정렬 기준의 전체 방문자(선택 인쇄용 — 필터 무관) */
-function sortedAll(visitors: Visitor[], sort: SortState<SortKey>, I: StayIndex) {
-  const val = (v: Visitor) => (sort.key === "room" ? stayText(v, I) : (v as any)[sort.key]);
+function sortedAll(visitors: Visitor[], sort: SortState<SortKey>, I: StayIndex, tr: Tr) {
+  const val = (v: Visitor) => (sort.key === "room" ? stayText(v, I, tr) : (v as any)[sort.key]);
   return visitors.slice().sort((a, b) => cmp(val(a), val(b)) * sort.dir);
 }
 /** 연속된 같은 키끼리 묶기(현재 쪽의 묶음 제목) */
@@ -529,37 +525,46 @@ function useVisitorColumns({
   onRoom: (f: Facility) => void;
   onHs: (id: number) => void;
 }): Column<Visitor>[] {
+  const { t } = useT();
   return useMemo(() => {
-    const H = (k: SortKey, l: string) => <SortHead k={k} label={l} sort={sort} onSort={setSort} />;
+    const H = (k: SortKey, l: MsgKey) => <SortHead k={k} label={t(l)} sort={sort} onSort={setSort} />;
     const cols: Column<Visitor>[] = [
-      { key: "pid", header: H("pid", "번호"), cell: (x) => <span className="font-semibold whitespace-nowrap">{x.pid || "—"}</span> },
-      { key: "gno", header: H("gno", "그룹"), cell: (x) => (x.gno ? <Badge tone="blue">{x.gno}</Badge> : <Dash />) },
-      { key: "name", header: H("name", "이름"), cell: (x) => <span className="font-semibold whitespace-nowrap">{x.name}</span> },
-      { key: "sex", header: H("sex", "성별"), cell: (x) => <SexTag sex={x.sex} /> },
-      { key: "country", header: H("country", "국가"), cell: (x) => <span className="whitespace-nowrap">{x.country || "—"}</span> },
+      {
+        key: "pid",
+        header: H("pid", "stay.col.pid"),
+        cell: (x) => <span className="font-semibold whitespace-nowrap">{x.pid || "—"}</span>,
+      },
+      { key: "gno", header: H("gno", "stay.col.gno"), cell: (x) => (x.gno ? <Badge tone="blue">{x.gno}</Badge> : <Dash />) },
+      { key: "name", header: H("name", "stay.col.name"), cell: (x) => <span className="font-semibold whitespace-nowrap">{x.name}</span> },
+      { key: "sex", header: H("sex", "stay.col.sex"), cell: (x) => <SexTag sex={x.sex} /> },
+      {
+        key: "country",
+        header: H("country", "stay.col.country"),
+        cell: (x) => <span className="whitespace-nowrap">{x.country || "—"}</span>,
+      },
       {
         key: "lang",
-        header: H("lang", "언어"),
+        header: H("lang", "stay.col.lang"),
         cell: (x) => <span className="whitespace-nowrap">{x.lang || "—"}</span>,
         hideOnMobile: true,
       },
       {
         key: "room",
-        header: H("room", "숙박 장소"),
+        header: H("room", "stay.col.stayPlace"),
         className: "min-w-36",
         cell: (x) => <StayCell v={x} I={I} onRoom={onRoom} onHs={onHs} />,
       },
-      { key: "stay", header: H("stay", "기간"), cell: (x) => <span className="whitespace-nowrap">{x.stay || "—"}</span> },
+      { key: "stay", header: H("stay", "stay.col.period"), cell: (x) => <span className="whitespace-nowrap">{x.stay || "—"}</span> },
       {
         key: "role",
-        header: H("role", "역할"),
+        header: H("role", "stay.col.role"),
         cell: (x) => (x.role ? <Badge tone="green">{x.role}</Badge> : <Dash />),
         hideOnMobile: true,
       },
-      { key: "status", header: H("status", "상태"), cell: (x) => <VisStatus s={x.status} /> },
+      { key: "status", header: H("status", "stay.col.status"), cell: (x) => <VisStatus s={x.status} /> },
       {
         key: "note",
-        header: H("note", "비고"),
+        header: H("note", "stay.col.note"),
         className: "min-w-28 max-w-64 text-ink-3",
         cell: (x) => (
           <span className="line-clamp-2 whitespace-pre-wrap" title={x.note}>
@@ -568,29 +573,31 @@ function useVisitorColumns({
         ),
         hideOnMobile: true,
       },
-      { key: "tel", header: "연락처", cell: (x) => <Tel tel={x.tel} /> },
+      { key: "tel", header: t("stay.col.tel"), cell: (x) => <Tel tel={x.tel} /> },
     ];
     if (editable)
       cols.push({
         key: "edit",
-        header: <span className="sr-only">관리</span>,
+        header: <span className="sr-only">{t("stay.ui.manage")}</span>,
         cell: (x) => (
           <Button size="sm" variant="ghost" onClick={() => onEdit(x)}>
-            편집
+            {t("stay.ui.edit")}
           </Button>
         ),
       });
     return cols;
-  }, [I, sort, setSort, editable, onEdit, onRoom, onHs]);
+  }, [I, sort, setSort, editable, onEdit, onRoom, onHs, t]);
 }
 
 /** 숙박 장소 칸: 🏠 H번호 + 대표자(홈스테이 화면으로) / 교리실 배지(숙박자 보기) / 연결 끊김 / 미배정 */
 function StayCell({ v, I, onRoom, onHs }: { v: Visitor; I: StayIndex; onRoom: (f: Facility) => void; onHs: (id: number) => void }) {
+  const tr = useT();
+  const { t } = tr;
   const k = placeKind(v, I);
   if (k === "room") {
     const f = visFacility(v, I)!;
     return (
-      <button type="button" onClick={() => onRoom(f)} title="이 교리실 숙박자 보기" className="rounded-md hover:opacity-80">
+      <button type="button" onClick={() => onRoom(f)} title={t("stay.vis.cellRoomTitle")} className="rounded-md hover:opacity-80">
         <Badge tone="blue">{roomLabel(f)}</Badge>
       </button>
     );
@@ -601,16 +608,16 @@ function StayCell({ v, I, onRoom, onHs }: { v: Visitor; I: StayIndex; onRoom: (f
       <button
         type="button"
         onClick={() => onHs(h.id)}
-        title="홈스테이 화면에서 이 가정 보기"
+        title={t("stay.vis.cellHsTitle")}
         className="inline-flex items-center gap-1.5 rounded-md text-left hover:opacity-80"
       >
-        <Badge tone="amber">🏠 {h.hid || "번호없음"}</Badge>
+        <Badge tone="amber">🏠 {h.hid || t("stay.vis.noHid")}</Badge>
         <span className="text-[13px] whitespace-nowrap text-ink-2">{h.host}</span>
       </button>
     );
   }
-  if (k === "orphan") return <span className="text-[13px] text-bad">연결 끊김({orphanText(v, I)})</span>;
-  return <span className="text-[13px] text-warn">미배정</span>;
+  if (k === "orphan") return <span className="text-[13px] text-bad">{t("stay.place.orphanWith", { text: orphanText(v, I, tr) })}</span>;
+  return <span className="text-[13px] text-warn">{t("stay.place.unassigned")}</span>;
 }
 
 /** 교리실 숙박 방문자 보기(방문자 명단의 배정 교리실과 연동) */
@@ -625,21 +632,26 @@ function RoomGuestsDialog({
   onClose: () => void;
   onFilter: (f: Facility) => void;
 }) {
+  const { t } = useT();
   const ps = room ? (I.byFacility.get(room.id) || []).slice().sort((a, b) => cmp(a.pid, b.pid)) : [];
   return (
     <Dialog
       open={!!room}
       onOpenChange={(o) => !o && onClose()}
       size="md"
-      title={room ? `${roomLabel(room)} · 숙박 방문자` : ""}
-      description={room ? `총 ${ps.length}명${room.cap ? ` / 수용 ${room.cap}명` : ""} · 방문자 명단의 '배정 교리실'과 연동` : undefined}
+      title={room ? t("stay.vis.roomDlgTitle", { room: roomLabel(room) }) : ""}
+      description={
+        room
+          ? t("stay.vis.roomDlgDesc", { n: ps.length, cap: room.cap ? t("stay.guest.capPart", { cap: Number(room.cap) }) : "" })
+          : undefined
+      }
       footer={
         <>
           <Button variant="ghost" onClick={() => room && onFilter(room)}>
-            이 교리실만 목록에서 보기 ›
+            {t("stay.vis.roomDlgFilter")}
           </Button>
           <Button variant="primary" onClick={onClose}>
-            닫기
+            {t("common.close")}
           </Button>
         </>
       }
@@ -659,13 +671,13 @@ function RoomGuestsDialog({
                 <VisStatus s={p.status} />
               </div>
               <div className="mt-1 text-[12.5px] text-ink-2">
-                연락처: <Tel tel={p.tel} />
+                {t("stay.vis.telLabel")} <Tel tel={p.tel} />
               </div>
             </li>
           ))}
         </ul>
       ) : (
-        <p className="py-3 text-[13px] text-ink-3">이 교리실에 배정된 방문자가 없습니다.</p>
+        <p className="py-3 text-[13px] text-ink-3">{t("stay.ui.roomEmpty")}</p>
       )}
     </Dialog>
   );

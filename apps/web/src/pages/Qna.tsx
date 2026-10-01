@@ -14,11 +14,13 @@ import { RowActions } from "@/components/board/RowActions";
 import { tableKey, useSave, useTable } from "@/lib/data";
 import { useCan } from "@/lib/auth";
 import { api, ApiError } from "@/lib/api";
+import { useT } from "@/lib/i18n";
 
 const isAnswered = (x: QnaRow) => !!x.answered && !!String(x.a || "").trim();
 
-/** 누구나 질문(비로그인 공개 API) — 순례자(외국인)를 위해 영어 병기 */
+/** 누구나 질문(비로그인 공개 API) */
 function AskDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
+  const { t } = useT();
   const qc = useQueryClient();
   const [author, setAuthor] = useState("");
   const [q, setQ] = useState("");
@@ -27,25 +29,21 @@ function AskDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v: bo
   const submit = async () => {
     setErr("");
     if (!author.trim() || !q.trim()) {
-      setErr("질문자와 질문 내용을 입력하세요. / Please enter your name and question.");
+      setErr(t("board.qna.needInput"));
       return;
     }
     setBusy(true);
     try {
       await api.post("/qna/ask", { author: author.trim(), q: q.trim() });
       await qc.invalidateQueries({ queryKey: tableKey("qna") });
-      toast.success("질문이 등록되었습니다. 본당에서 곧 답변드리겠습니다.", {
-        description: "Your question has been posted. The parish will reply soon.",
-      });
+      toast.success(t("board.qna.posted"));
       setAuthor("");
       setQ("");
       onOpenChange(false);
     } catch (e) {
-      if (e instanceof ApiError && e.code === "RATE_LIMIT")
-        setErr("질문이 너무 많습니다. 잠시 후(약 10분) 다시 등록하세요. / Too many questions — please try again in a few minutes.");
-      else if (e instanceof ApiError && e.code === "VALIDATION")
-        setErr(`${e.message} / Name up to 40 characters, question up to 1,000 characters.`);
-      else setErr(e instanceof ApiError ? e.message : "등록하지 못했습니다. / Could not post your question.");
+      if (e instanceof ApiError && e.code === "RATE_LIMIT") setErr(t("board.qna.rateLimit"));
+      else if (e instanceof ApiError && e.code === "VALIDATION") setErr(`${e.message} ${t("board.qna.limitHint")}`);
+      else setErr(e instanceof ApiError ? e.message : t("board.qna.postFailed"));
     } finally {
       setBusy(false);
     }
@@ -55,37 +53,37 @@ function AskDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v: bo
       open={open}
       onOpenChange={(o) => !busy && onOpenChange(o)}
       size="md"
-      title="질문하기 / Ask a question"
-      description="질문은 누구나 남길 수 있고, 답변은 본당 관리자가 등록합니다. · Anyone can ask; the parish will reply here."
+      title={t("board.qna.askTitle")}
+      description={t("board.qna.askDesc")}
       footer={
         <>
           <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={busy}>
-            취소 / Cancel
+            {t("common.cancel")}
           </Button>
           <Button variant="primary" loading={busy} onClick={() => void submit()}>
             <Send />
-            등록 / Submit
+            {t("board.qna.submit")}
           </Button>
         </>
       }
     >
       <div className="space-y-3.5">
-        <Field label="질문자 (이름/그룹) · Name / Group" hint="예: Maria (G3, Philippines)">
+        <Field label={t("board.qna.authorLabel")} hint={t("board.qna.authorHint")}>
           <Input
             data-autofocus
             value={author}
             maxLength={40}
             onChange={(e) => setAuthor(e.target.value)}
-            placeholder="Your name or group"
+            placeholder={t("board.qna.authorPlaceholder")}
           />
         </Field>
-        <Field label="질문 내용 · Question" hint={`${q.length} / 1000`}>
+        <Field label={t("board.qna.questionLabel")} hint={`${q.length} / 1000`}>
           <Textarea
             value={q}
             maxLength={1000}
             rows={5}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="한국어 또는 영어로 편하게 적어 주세요. · Write in Korean or English."
+            placeholder={t("board.qna.questionPlaceholder")}
           />
         </Field>
         {err && (
@@ -93,10 +91,7 @@ function AskDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v: bo
             {err}
           </p>
         )}
-        <p className="text-[12px] text-ink-3">
-          연락처 등 개인정보는 적지 마세요. 질문은 모두에게 공개됩니다. · Please don't include personal contact details; questions are
-          public.
-        </p>
+        <p className="text-[12px] text-ink-3">{t("board.qna.privacy")}</p>
       </div>
     </Dialog>
   );
@@ -104,12 +99,13 @@ function AskDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v: bo
 
 /** 관리자 인라인 답변 */
 function AnswerBox({ item, onDone }: { item: QnaRow; onDone: () => void }) {
+  const { t } = useT();
   const save = useSave("qna");
   const [a, setA] = useState(item.a || "");
   const submit = async () => {
     try {
       await save.mutateAsync({ id: item.id, version: item.version, a, answered: !!a.trim() });
-      toast.success(a.trim() ? "답변을 저장했습니다." : "답변을 비웠습니다(답변대기).");
+      toast.success(a.trim() ? t("board.qna.replySaved") : t("board.qna.replyCleared"));
       onDone();
     } catch {
       /* 오류 토스트·충돌 창은 useSave가 처리 */
@@ -118,7 +114,7 @@ function AnswerBox({ item, onDone }: { item: QnaRow; onDone: () => void }) {
   return (
     <div className="mt-3 rounded-xl border border-primary/30 bg-primary-soft/40 p-3">
       <label className="mb-1.5 block text-[12.5px] font-semibold text-primary-soft-ink" htmlFor={`qa-${item.id}`}>
-        본당 답변 · Parish reply
+        {t("board.qna.replyLabel")}
       </label>
       <Textarea
         id={`qa-${item.id}`}
@@ -126,14 +122,14 @@ function AnswerBox({ item, onDone }: { item: QnaRow; onDone: () => void }) {
         value={a}
         rows={4}
         onChange={(e) => setA(e.target.value)}
-        placeholder="답변을 입력하세요. 비우고 저장하면 '답변대기'로 돌아갑니다."
+        placeholder={t("board.qna.replyPlaceholder")}
       />
       <div className="mt-2 flex justify-end gap-2">
         <Button size="sm" variant="ghost" onClick={onDone} disabled={save.isPending}>
-          취소
+          {t("common.cancel")}
         </Button>
         <Button size="sm" variant="primary" loading={save.isPending} onClick={() => void submit()}>
-          저장
+          {t("common.save")}
         </Button>
       </div>
     </div>
@@ -143,6 +139,7 @@ function AnswerBox({ item, onDone }: { item: QnaRow; onDone: () => void }) {
 type Tab = "all" | "wait" | "done";
 
 export default function Qna() {
+  const { t } = useT();
   const { rows, isLoading } = useTable("qna");
   const { isAdmin } = useCan();
   const [tab, setTab] = useState<Tab>("all");
@@ -157,12 +154,12 @@ export default function Qna() {
     <div className="mx-auto max-w-3xl">
       <PageHeader
         icon={<CircleHelp />}
-        title="방문자 Q&A (Pilgrim Q&A)"
-        subtitle="순례자 질문 → 본당 답변 · 질문은 누구나, 답변은 관리자 · Ask a question anytime"
+        title={t("board.qna.title")}
+        subtitle={t("board.qna.subtitle")}
         actions={
           <Button variant="primary" onClick={() => setAsk(true)}>
             <Plus />
-            질문하기 / Ask
+            {t("board.qna.ask")}
           </Button>
         }
       />
@@ -171,9 +168,9 @@ export default function Qna() {
         value={tab}
         onChange={setTab}
         options={[
-          { value: "all", label: "전체 · All", count: sorted.length },
-          { value: "wait", label: "답변대기 · Waiting", count: sorted.length - done },
-          { value: "done", label: "답변완료 · Answered", count: done },
+          { value: "all", label: t("common.all"), count: sorted.length },
+          { value: "wait", label: t("board.qna.waiting"), count: sorted.length - done },
+          { value: "done", label: t("board.qna.answered"), count: done },
         ]}
       />
       {isLoading ? (
@@ -188,20 +185,27 @@ export default function Qna() {
             return (
               <BoardCard
                 key={item.id}
-                title={item.author || "익명 · Anonymous"}
+                title={item.author || t("board.qna.anonymous")}
                 date={item.date}
                 body={item.q}
-                badges={<Badge tone="amber">질문 · Q</Badge>}
+                badges={<Badge tone="amber">{t("board.qna.q")}</Badge>}
                 actions={
                   <>
-                    <Badge tone={answered ? "green" : "gray"}>{answered ? "답변완료 · Answered" : "답변대기 · Waiting"}</Badge>
-                    {isAdmin && <RowActions table="qna" row={item} label={`${item.author} 질문`} onEdit={() => setEdit(item)} />}
+                    <Badge tone={answered ? "green" : "gray"}>{answered ? t("board.qna.answered") : t("board.qna.waiting")}</Badge>
+                    {isAdmin && (
+                      <RowActions
+                        table="qna"
+                        row={item}
+                        label={t("board.qna.rowLabel", { author: item.author })}
+                        onEdit={() => setEdit(item)}
+                      />
+                    )}
                   </>
                 }
               >
                 {answered && answering !== item.id && (
                   <div className="mt-3 rounded-xl bg-primary-soft px-3.5 py-3">
-                    <div className="mb-1 text-[12px] font-semibold text-primary-soft-ink">본당 답변 · Parish reply</div>
+                    <div className="mb-1 text-[12px] font-semibold text-primary-soft-ink">{t("board.qna.replyLabel")}</div>
                     <div className="text-[14px] leading-relaxed break-words whitespace-pre-wrap text-ink">{item.a}</div>
                   </div>
                 )}
@@ -212,7 +216,7 @@ export default function Qna() {
                     <div className="mt-3">
                       <Button size="sm" variant={answered ? "ghost" : "soft"} onClick={() => setAnswering(item.id)}>
                         <MessageSquareReply />
-                        {answered ? "답변 수정" : "답변"}
+                        {answered ? t("board.qna.editReply") : t("board.qna.reply")}
                       </Button>
                     </div>
                   ))}
@@ -221,20 +225,24 @@ export default function Qna() {
           })}
         </div>
       ) : (
-        <Empty
-          icon={<CircleHelp />}
-          title={tab === "all" ? "등록된 질문이 없습니다. / No questions yet." : "해당하는 질문이 없습니다. / Nothing here."}
-        >
+        <Empty icon={<CircleHelp />} title={tab === "all" ? t("board.qna.empty") : t("board.qna.emptyTab")}>
           {tab === "all" && (
             <Button className="mt-2" variant="primary" onClick={() => setAsk(true)}>
               <Plus />
-              질문하기 / Ask
+              {t("board.qna.ask")}
             </Button>
           )}
         </Empty>
       )}
       <AskDialog open={ask} onOpenChange={setAsk} />
-      <EditDialog table="qna" open={!!edit} onOpenChange={(o) => !o && setEdit(null)} row={edit} size="md" title="질문 수정" />
+      <EditDialog
+        table="qna"
+        open={!!edit}
+        onOpenChange={(o) => !o && setEdit(null)}
+        row={edit}
+        size="md"
+        title={t("board.qna.editTitle")}
+      />
     </div>
   );
 }

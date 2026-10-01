@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { StayPicker, parseStayCode, type StayCode } from "./StayPicker";
 import { orphanText } from "./stay";
 import { useStayIndex } from "./useStayIndex";
+import { useT } from "@/lib/i18n";
 
 type Values = Record<string, any>;
 const NEW_VISITOR: Values = { status: "확정", sex: "" };
@@ -14,6 +15,8 @@ const NEW_VISITOR: Values = { status: "확정", sex: "" };
  * 저장 시 선택값을 facilityId/homestayId(다른 쪽은 null)로 바꾸고, 새 숙소를 고르면 연결 끊김 값(orphanStay)을 비움.
  */
 export function VisitorEditDialog({ open, onOpenChange, row }: { open: boolean; onOpenChange: (v: boolean) => void; row: Visitor | null }) {
+  const tr = useT();
+  const { t } = tr;
   const { I, visitors } = useStayIndex();
   const orphan = !!row && isOrphan(row, I);
   const initial: StayCode = !row
@@ -25,7 +28,7 @@ export function VisitorEditDialog({ open, onOpenChange, row }: { open: boolean; 
         : row.homestayId != null
           ? "hs:" + row.homestayId
           : "";
-  const keepLabel = orphan && row ? orphanText(row, I) || "현재 값" : null;
+  const keepLabel = orphan && row ? orphanText(row, I, tr) || t("stay.edit.keep") : null;
   const usedCountries = useMemo(
     () => [...new Set(visitors.map((v) => v.country).filter((c) => c && !COUNTRY_OPTS.includes(c)))],
     [visitors],
@@ -50,8 +53,8 @@ export function VisitorEditDialog({ open, onOpenChange, row }: { open: boolean; 
       onOpenChange={onOpenChange}
       row={row}
       defaults={NEW_VISITOR}
-      title={row ? `편집 · 방문자(순례자) 개인${row.pid ? " " + row.pid : ""}` : "추가 · 방문자(순례자) 개인"}
-      deleteLabel="이 방문자를 명단에서 삭제합니다. 되돌릴 수 없습니다."
+      title={row ? (row.pid ? t("stay.edit.titleEditPid", { pid: row.pid }) : t("stay.edit.titleEdit")) : t("stay.edit.titleAdd")}
+      deleteLabel={t("stay.edit.deleteLabel")}
       transform={transform}
       custom={{
         stayplace: (v, set) => (
@@ -71,7 +74,7 @@ export function VisitorEditDialog({ open, onOpenChange, row }: { open: boolean; 
             <Input
               list="dl-vis-country"
               value={v.country ?? ""}
-              placeholder="목록에서 선택하거나 직접 입력"
+              placeholder={t("stay.edit.countryPh")}
               onChange={(e) => {
                 const c = e.target.value;
                 set("country", c);

@@ -20,19 +20,20 @@ export interface TableDef {
   scope?: (u: AuthUser) => ((r: Row) => boolean) | null;
   /** 정렬 기본값 */
   order: string[];
+  /** 표 이름 메시지 키(err.table.*) — 오류 메시지에 번역해 넣음 */
   label: string;
 }
 
 const sameTeam = (u: AuthUser, r: Row | null) => !r || (!!u.team && teamInfo(r as any).team === teamInfo({ team: u.team }).team);
 
 export const REGISTRY: Record<TableName, TableDef> = {
-  facilities: { table: S.facilities, schema: schemas.facilities, read: "auth", order: ["rno", "id"], label: "시설" },
+  facilities: { table: S.facilities, schema: schemas.facilities, read: "auth", order: ["rno", "id"], label: "err.table.facilities" },
   homestays: {
     table: S.homestays,
     schema: schemas.homestays,
     read: "auth",
     order: ["hid"],
-    label: "홈스테이 가정",
+    label: "err.table.homestays",
     scope: (u) => (u.role === "host" ? (r) => r.id === u.homestayId : null),
   },
   visitors: {
@@ -40,16 +41,16 @@ export const REGISTRY: Record<TableName, TableDef> = {
     schema: schemas.visitors,
     read: "auth",
     order: ["pid"],
-    label: "방문자",
+    label: "err.table.visitors",
     scope: (u) => (u.role === "host" ? (r) => u.homestayId != null && r.homestayId === u.homestayId : null),
   },
-  departments: { table: S.departments, schema: schemas.departments, read: "public", order: ["sort", "id"], label: "분과·구역" },
+  departments: { table: S.departments, schema: schemas.departments, read: "public", order: ["sort", "id"], label: "err.table.departments" },
   volunteers: {
     table: S.volunteers,
     schema: schemas.volunteers,
     read: "auth",
     order: ["team", "id"],
-    label: "봉사자",
+    label: "err.table.volunteers",
     // 분과 책임자: 자기 팀 봉사자만 추가·수정·삭제(다른 팀으로 옮기기 불가)
     canWrite: (u, b, a) => u.role === "dept" && sameTeam(u, b) && sameTeam(u, a),
     // 홈스테이 가정 계정은 봉사자 명단(연락처 포함)을 받지 않음 — 화면에서 숨기는 것만으로는 보호가 안 됨(SEC-01)
@@ -61,23 +62,23 @@ export const REGISTRY: Record<TableName, TableDef> = {
     read: "public",
     publicMask: { tel: maskTel },
     order: ["sort", "id"],
-    label: "임원",
+    label: "err.table.officers",
   },
-  schedule: { table: S.schedule, schema: schemas.schedule, read: "public", order: ["sort", "id"], label: "일정" },
-  prep: { table: S.prep, schema: schemas.prep, read: "public", order: ["sort", "id"], label: "D-DAY 준비" },
-  notices: { table: S.notices, schema: schemas.notices, read: "public", order: ["date", "id"], label: "공지" },
+  schedule: { table: S.schedule, schema: schemas.schedule, read: "public", order: ["sort", "id"], label: "err.table.schedule" },
+  prep: { table: S.prep, schema: schemas.prep, read: "public", order: ["sort", "id"], label: "err.table.prep" },
+  notices: { table: S.notices, schema: schemas.notices, read: "public", order: ["date", "id"], label: "err.table.notices" },
   posts: {
     table: S.posts,
     schema: schemas.posts,
     read: "auth",
     order: ["date", "id"],
-    label: "게시글",
+    label: "err.table.posts",
     // 로그인 사용자는 글쓰기, 수정·삭제는 본인 글만
     canWrite: (u, b) => !b || b.authorId === u.id,
   },
-  qna: { table: S.qna, schema: schemas.qna, read: "public", order: ["date", "id"], label: "Q&A" },
-  places: { table: S.places, schema: schemas.places, read: "public", order: ["sort", "id"], label: "장소" },
-  gori: { table: S.gori, schema: schemas.gori, read: "public", order: ["date"], label: "고리기도" },
+  qna: { table: S.qna, schema: schemas.qna, read: "public", order: ["date", "id"], label: "err.table.qna" },
+  places: { table: S.places, schema: schemas.places, read: "public", order: ["sort", "id"], label: "err.table.places" },
+  gori: { table: S.gori, schema: schemas.gori, read: "public", order: ["date"], label: "err.table.gori" },
 };
 
 export function canWrite(def: TableDef, u: AuthUser | undefined, before: Row | null, after: Row | null): boolean {

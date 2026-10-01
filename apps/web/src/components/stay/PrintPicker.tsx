@@ -7,7 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Segmented } from "@/components/ui/misc";
 import { printDocument } from "@/lib/print";
 import { cn } from "@/lib/utils";
-import { groupOrder, type ExportCol } from "./stay";
+import { useT } from "@/lib/i18n";
+import { groupOrder, type CountUnit, type ExportCol } from "./stay";
 
 /**
  * 선택 인쇄(기존 PRINT_PICKERS) — 묶음 기준을 고르고 인쇄할 항목만 체크해 한 문서로 인쇄.
@@ -26,12 +27,13 @@ export function PrintPicker<T>({
   open: boolean;
   onOpenChange: (v: boolean) => void;
   label: string;
-  unit: string;
+  unit: CountUnit;
   groupers: [string, string][];
   keyOf: (r: T, by: string) => string;
   rows: T[];
   cols: ExportCol<T>[];
 }) {
+  const { t } = useT();
   const [by, setBy] = useState(groupers[0][0]);
   const { order, count } = useMemo(() => groupOrder(rows, (r) => keyOf(r, by)), [rows, by, keyOf]);
   const [picked, setPicked] = useState<Set<string>>(new Set());
@@ -41,24 +43,24 @@ export function PrintPicker<T>({
   useEffect(() => {
     if (open) setPicked(new Set(orderRef.current));
   }, [open, by]);
-  const glabel = groupers.find((g) => g[0] === by)?.[1] ?? "그룹";
+  const glabel = groupers.find((g) => g[0] === by)?.[1] ?? t("stay.print.group");
 
   const print = () => {
     const keys = order.filter((k) => picked.has(k));
     if (!keys.length) {
-      toast.warning("인쇄할 항목을 하나 이상 선택하세요.");
+      toast.warning(t("stay.print.none"));
       return;
     }
     const total = keys.reduce((s, k) => s + (count.get(k) || 0), 0);
     printDocument(
-      `${PARISH.name} ${label} 명단 · ${glabel} 선택 인쇄`,
+      t("stay.print.docTitle", { parish: PARISH.name, label, group: glabel }),
       keys.map((k) => ({
         heading: `${glabel} · ${k}`,
-        note: `${count.get(k)}${unit}`,
+        note: t(`stay.unit.${unit}`, { n: count.get(k) || 0 }),
         columns: cols.map((c) => c[0]),
         rows: rows.filter((r) => keyOf(r, by) === k).map((r) => cols.map(([, g]) => g(r))),
       })),
-      { subtitle: `${glabel} 기준 · 선택 ${keys.length}개 · 총 ${total}${unit}` },
+      { subtitle: t("stay.print.subtitle", { group: glabel, n: keys.length, total: t(`stay.unit.${unit}`, { n: total }) }) },
     );
     onOpenChange(false);
   };
@@ -68,31 +70,31 @@ export function PrintPicker<T>({
       open={open}
       onOpenChange={onOpenChange}
       size="sm"
-      title={`${label} 선택 인쇄`}
-      description="묶음 기준을 고르고, 인쇄할 항목을 선택하세요. 선택한 항목만 한 문서로 인쇄됩니다."
+      title={t("stay.print.title", { label })}
+      description={t("stay.print.desc")}
       footer={
         <>
           <Button variant="ghost" onClick={() => onOpenChange(false)}>
-            취소
+            {t("common.cancel")}
           </Button>
           <Button variant="primary" onClick={print} disabled={!picked.size}>
             <Printer />
-            선택 항목 인쇄
+            {t("stay.print.printSel")}
           </Button>
         </>
       }
     >
-      <div className="mb-1.5 text-[12.5px] text-ink-3">묶음 기준</div>
+      <div className="mb-1.5 text-[12.5px] text-ink-3">{t("stay.print.groupBy")}</div>
       <Segmented value={by} onChange={setBy} options={groupers.map(([value, l]) => ({ value, label: l }))} className="mb-3" />
       <div className="mb-2 flex gap-2">
         <Button size="sm" variant="secondary" onClick={() => setPicked(new Set(order))}>
-          전체 선택
+          {t("stay.print.selectAll")}
         </Button>
         <Button size="sm" variant="secondary" onClick={() => setPicked(new Set())}>
-          전체 해제
+          {t("stay.print.clearAll")}
         </Button>
         <span className="ml-auto self-center text-[12.5px] text-ink-3">
-          {picked.size} / {order.length}개
+          {t("stay.print.picked", { n: picked.size, total: order.length })}
         </span>
       </div>
       <div className="max-h-72 overflow-y-auto rounded-xl border border-line">
@@ -116,14 +118,11 @@ export function PrintPicker<T>({
                 }
               />
               <span className="font-semibold text-ink">{k}</span>
-              <span className="text-[12.5px] text-ink-3">
-                · {count.get(k)}
-                {unit}
-              </span>
+              <span className="text-[12.5px] text-ink-3">· {t(`stay.unit.${unit}`, { n: count.get(k) || 0 })}</span>
             </label>
           ))
         ) : (
-          <div className="px-3 py-6 text-center text-[13px] text-ink-3">항목이 없습니다.</div>
+          <div className="px-3 py-6 text-center text-[13px] text-ink-3">{t("common.empty")}</div>
         )}
       </div>
     </Dialog>

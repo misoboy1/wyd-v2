@@ -1,11 +1,24 @@
 import { Fragment, type ReactNode } from "react";
 import { ArrowDown, ArrowUp, ArrowUpDown, Eye, Lock, Pencil, Plus } from "lucide-react";
-import { NO_TEAM, cmpStr, roleRank, teamOf, teamOrder, teamRange } from "@wyd/shared";
+import { NO_TEAM, cmpStr, roleRank, teamOf, teamOrder, teamRange, type MsgKey } from "@wyd/shared";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useCan } from "@/lib/auth";
+import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
-import { LangBadge, RefChips, RoleBadge, Tel, TeamBadge, isTeamLead, isVirtualVol, volRefText, volTeamSort, type Vol } from "./vol";
+import {
+  LangBadge,
+  RefChips,
+  RoleBadge,
+  Tel,
+  TeamBadge,
+  isTeamLead,
+  isVirtualVol,
+  teamName,
+  volRefText,
+  volTeamSort,
+  type Vol,
+} from "./vol";
 
 export type VolSortKey = "team" | "role" | "name" | "tel" | "task" | "langs" | "ref" | "note";
 export interface VolSort {
@@ -29,15 +42,15 @@ export function sortVols(list: Vol[], sort: VolSort, grouped: boolean, deptName:
 export const nextSort = (cur: VolSort, key: VolSortKey): VolSort =>
   cur.key === key ? { key, dir: cur.dir === 1 ? -1 : 1 } : { key, dir: 1 };
 
-const COLS: [VolSortKey, string][] = [
-  ["team", "팀"],
-  ["role", "직책"],
-  ["name", "이름"],
-  ["tel", "연락처"],
-  ["task", "담당 임무"],
-  ["langs", "언어 구사"],
-  ["ref", "참고(분과·구역 / 단체)"],
-  ["note", "비고"],
+const COLS: [VolSortKey, MsgKey][] = [
+  ["team", "org.col.team"],
+  ["role", "org.col.role"],
+  ["name", "org.col.name"],
+  ["tel", "org.col.tel"],
+  ["task", "org.col.task"],
+  ["langs", "org.col.langs"],
+  ["ref", "org.col.ref"],
+  ["note", "org.col.note"],
 ];
 
 /**
@@ -72,6 +85,7 @@ export function VolTable({
   empty?: ReactNode;
 }) {
   const { canWrite, loggedIn } = useCan();
+  const { t: tr, label } = useT();
   const cols = COLS.filter(([k]) => !(hideTeam && k === "team") && !(hideNote && k === "note"));
   const canAdd = (t: string) => t !== NO_TEAM && canWrite("volunteers", { team: t });
   const groupHead = (t: string) => {
@@ -80,16 +94,17 @@ export function VolTable({
       lead = all.find((x) => isTeamLead(x.role));
     return (
       <div className="flex flex-wrap items-center gap-2">
-        <span className={cn("font-bold", t === NO_TEAM ? "text-bad" : "text-ink")}>{t}</span>
+        <span className={cn("font-bold", t === NO_TEAM ? "text-bad" : "text-ink")}>{teamName(tr, t)}</span>
         <span className="text-[12.5px] text-ink-3">
-          · {all.length}명{rg ? ` / 표준 ${rg.txt}` : ""}
-          {lead ? ` · ${lead.role} ${lead.name}` : ""}
+          · {tr("common.people", { n: all.length })}
+          {rg ? ` / ${tr("org.tbl.std", { range: rg.txt })}` : ""}
+          {lead ? ` · ${label("volRole", lead.role)} ${lead.name}` : ""}
         </span>
         <span className="flex-1" />
         {onAddToTeam && canAdd(t) && (
           <Button size="sm" variant="ghost" onClick={() => onAddToTeam(t)}>
             <Plus />
-            추가
+            {tr("common.add")}
           </Button>
         )}
       </div>
@@ -105,17 +120,17 @@ export function VolTable({
           e.stopPropagation();
           onOpen(v);
         }}
-        aria-label={`${v.name} ${w ? "편집" : "보기"}`}
+        aria-label={tr(w ? "org.editName" : "org.viewName", { name: v.name })}
       >
         {w ? (
           <>
             <Pencil />
-            편집
+            {tr("org.edit")}
           </>
         ) : (
           <>
             <Eye />
-            보기
+            {tr("org.view")}
           </>
         )}
       </Button>
@@ -131,7 +146,7 @@ export function VolTable({
         return (
           <span className="font-semibold whitespace-nowrap">
             {v.name}
-            {isVirtualVol(v) && <Badge className="ml-1.5">가상</Badge>}
+            {isVirtualVol(v) && <Badge className="ml-1.5">{tr("org.virtual")}</Badge>}
           </span>
         );
       case "tel":
@@ -160,7 +175,7 @@ export function VolTable({
     return { v, head };
   });
 
-  if (!rows.length) return <>{empty ?? <div className="py-10 text-center text-[13.5px] text-ink-3">조건에 맞는 봉사자가 없습니다.</div>}</>;
+  if (!rows.length) return <>{empty ?? <div className="py-10 text-center text-[13.5px] text-ink-3">{tr("org.tbl.empty")}</div>}</>;
   return (
     <>
       {/* 휴대폰: 카드 */}
@@ -175,7 +190,7 @@ export function VolTable({
                   {cell("name", v)}
                 </div>
                 <div className="-mt-1 -mr-1 flex items-center gap-1">
-                  {loggedIn && !canWrite("volunteers", v) && <Lock className="size-3.5 text-ink-3" aria-label="보기 전용" />}
+                  {loggedIn && !canWrite("volunteers", v) && <Lock className="size-3.5 text-ink-3" aria-label={tr("org.viewOnly")} />}
                   {action(v)}
                 </div>
               </div>
@@ -214,7 +229,7 @@ export function VolTable({
                   >
                     {onSort ? (
                       <button className="inline-flex items-center gap-1 hover:text-ink" onClick={() => onSort(k)}>
-                        {l}
+                        {tr(l)}
                         {on ? (
                           sort.dir === 1 ? (
                             <ArrowUp className="size-3" />
@@ -226,13 +241,13 @@ export function VolTable({
                         )}
                       </button>
                     ) : (
-                      l
+                      tr(l)
                     )}
                   </th>
                 );
               })}
               <th scope="col" className="border-b border-line bg-surface-2 px-3 py-2.5 text-left text-[12.5px] font-semibold text-ink-3">
-                관리
+                {tr("org.manage")}
               </th>
             </tr>
           </thead>

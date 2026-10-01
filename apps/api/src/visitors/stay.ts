@@ -5,6 +5,7 @@ import { roomFit, hsFit, isSleepRoom, type Facility, type Homestay } from "@wyd/
 import { facilities, homestays, visitors } from "../db/schema.js";
 import type { Tx } from "../db/client.js";
 import { StayError, Capacity, Invalid } from "../common/errors.js";
+import { enumP, tr } from "../common/i18n.js";
 
 type V = { id?: number; sex: string; stay: string; facilityId: number | null; homestayId: number | null; pid?: string; name?: string };
 
@@ -24,24 +25,34 @@ async function guestsOf(tx: Tx, col: "facilityId" | "homestayId", id: number, se
 
 /** 방문자 저장 전 검사. before=null이면 신규. 새로 들어가는 숙소(또는 성별·기간이 바뀐 배정)만 검사 */
 export async function checkVisitorStay(tx: Tx, before: V | null, after: V): Promise<void> {
-  if (after.facilityId != null && after.homestayId != null) throw Invalid("교리실과 홈스테이를 동시에 배정할 수 없습니다.");
+  if (after.facilityId != null && after.homestayId != null) throw Invalid("err.stay.both");
   const moved = !before || before.facilityId !== after.facilityId || before.homestayId !== after.homestayId;
   const changedPerson = !!before && (before.sex !== after.sex || (before.stay || "") !== (after.stay || ""));
   if (!moved && !changedPerson) return;
-  const who = after.pid || after.name || "방문자";
+  const who = after.pid || after.name || tr("err.stay.visitor");
   if (after.facilityId != null) {
     const f = await lockFacility(tx, after.facilityId);
-    if (!f) throw StayError(`${who}: 배정하려는 교리실이 없습니다(삭제됨).`);
+    if (!f) throw StayError("err.stay.roomGone", { who });
     const guests = await guestsOf(tx, "facilityId", f.id, after.id);
     const r = roomFit(f, after.sex, guests);
-    if (!r.avail) throw StayError(`${who}: '${f.name}' 배정 불가 — ${r.reason} (${r.used}/${r.cap})`, { reason: r.reason });
+    if (!r.avail)
+      throw StayError(
+        "err.stay.roomUnfit",
+        { who, room: f.name, reason: enumP("reason", r.reason), used: r.used, cap: r.cap },
+        { reason: r.reason },
+      );
   }
   if (after.homestayId != null) {
     const h = await lockHomestay(tx, after.homestayId);
-    if (!h) throw StayError(`${who}: 배정하려는 홈스테이 가정이 없습니다(삭제됨).`);
+    if (!h) throw StayError("err.stay.hsGone", { who });
     const guests = await guestsOf(tx, "homestayId", h.id, after.id);
     const r = hsFit(h, after.sex, guests, after.stay);
-    if (!r.avail) throw StayError(`${who}: '${h.hid} ${h.host}' 배정 불가 — ${r.reason} (${r.used}/${r.cap})`, { reason: r.reason });
+    if (!r.avail)
+      throw StayError(
+        "err.stay.hsUnfit",
+        { who, hs: `${h.hid} ${h.host}`, reason: enumP("reason", r.reason), used: r.used, cap: r.cap },
+        { reason: r.reason },
+      );
   }
 }
 
@@ -57,13 +68,13 @@ export async function checkHostPolicy(tx: Tx, table: "facilities" | "homestays",
         ? roomFit(after as unknown as Facility, g.sex, seated)
         : hsFit(after as unknown as Homestay, g.sex, seated, g.stay);
     if (!r.avail) {
-      const why =
+      const key =
         r.reason === "점검중" || r.reason === "퇴실"
-          ? `숙박자 ${guests.length}명이 있어 '${r.reason}'(으)로 바꿀 수 없습니다. 먼저 배정을 옮기세요.`
+          ? "err.stay.hostClosed"
           : r.reason === "숙박불가"
-            ? `숙박자 ${guests.length}명이 있어 숙박 시설이 아닌 유형으로 바꿀 수 없습니다.`
-            : `현재 숙박자 ${guests.length}명과 맞지 않습니다(${r.reason}). 먼저 배정을 조정하세요.`;
-      throw Capacity(why);
+            ? "err.stay.hostNotSleep"
+            : "err.stay.hostMismatch";
+      throw Capacity(key, { n: guests.length, reason: enumP("reason", r.reason) });
     }
     seated.push(g);
   }

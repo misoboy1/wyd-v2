@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { EditDialog } from "@/components/form/EditDialog";
 import { bulkSave, toastBulk } from "@/lib/data";
+import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import type { Vol } from "./vol";
 
@@ -26,6 +27,7 @@ export function Collapsible({
   defaultOpen?: boolean;
   actions?: ReactNode;
 }) {
+  const { t } = useT();
   const [open, setOpen] = useState(defaultOpen);
   return (
     <Card className="mb-4 overflow-hidden">
@@ -34,7 +36,7 @@ export function Collapsible({
           <ChevronDown className={cn("size-4.5 shrink-0 text-ink-3 transition-transform", !open && "-rotate-90")} />
           <span className="min-w-0">
             <span className="flex items-center gap-2 text-[15px] font-semibold text-ink">
-              <Badge tone="outline">참고</Badge>
+              <Badge tone="outline">{t("org.ref")}</Badge>
               {title}
             </span>
             {sub && <span className="mt-0.5 block text-[12.5px] text-ink-3">{sub}</span>}
@@ -52,6 +54,7 @@ const td = "border-b border-line px-3 py-2.5 align-top";
 
 /** 분과·구역 표(관리자 편집·순서 이동) */
 export function DeptSection({ depts, vols, admin }: { depts: Department[]; vols: Vol[]; admin: boolean }) {
+  const { t, label } = useT();
   const qc = useQueryClient();
   const [edit, setEdit] = useState<{ row?: Department | null } | null>(null);
   const [moving, setMoving] = useState(false);
@@ -78,17 +81,17 @@ export function DeptSection({ depts, vols, admin }: { depts: Department[]; vols:
       { id: b.id, version: b.version, sort: sa },
     ]);
     setMoving(false);
-    if (res.some((r) => !r.ok)) toastBulk("순서 변경", res);
+    if (res.some((r) => !r.ok)) toastBulk(t("org.refs.reorder"), res);
   };
   return (
     <Collapsible
-      title="분과·구역"
-      sub={`본당 분과 ${depts.filter((d) => d.kind !== "구역").length}개 · 구역 ${depts.filter((d) => d.kind === "구역").length}개 · 봉사자의 소속 분과·구역은 참고 정보입니다`}
+      title={t("org.refs.title")}
+      sub={t("org.refs.sub", { a: depts.filter((d) => d.kind !== "구역").length, b: depts.filter((d) => d.kind === "구역").length })}
       actions={
         admin && (
           <Button size="sm" onClick={() => setEdit({})}>
             <Plus />
-            분과·구역(참고)
+            {t("org.refs.addBtn")}
           </Button>
         )
       }
@@ -98,11 +101,11 @@ export function DeptSection({ depts, vols, admin }: { depts: Department[]; vols:
           <table className="w-full border-separate border-spacing-0 text-[13.5px]">
             <thead>
               <tr>
-                <th className={th}>구분</th>
-                <th className={th}>이름</th>
-                <th className={th}>임무</th>
-                <th className={th}>봉사자(참고)</th>
-                {admin && <th className={th}>관리</th>}
+                <th className={th}>{t("org.refs.kind")}</th>
+                <th className={th}>{t("org.refs.name")}</th>
+                <th className={th}>{t("org.refs.task")}</th>
+                <th className={th}>{t("org.refs.vols")}</th>
+                {admin && <th className={th}>{t("org.manage")}</th>}
               </tr>
             </thead>
             <tbody>
@@ -113,20 +116,20 @@ export function DeptSection({ depts, vols, admin }: { depts: Department[]; vols:
                   onClick={admin ? () => setEdit({ row: d }) : undefined}
                 >
                   <td className={td}>
-                    <Badge tone={d.kind === "구역" ? "gold" : "blue"}>{d.kind || "분과"}</Badge>
+                    <Badge tone={d.kind === "구역" ? "gold" : "blue"}>{label("deptKind", d.kind || "분과")}</Badge>
                   </td>
                   <td className={cn(td, "font-semibold whitespace-nowrap")}>
-                    {d.key && <Star className="mr-1 inline size-3.5 fill-current text-gold" aria-label="핵심" />}
+                    {d.key && <Star className="mr-1 inline size-3.5 fill-current text-gold" aria-label={t("org.refs.key")} />}
                     {d.name}
                   </td>
                   <td className={cn(td, "min-w-56 whitespace-pre-wrap text-ink-2")}>{d.task || <span className="text-ink-3">—</span>}</td>
-                  <td className={cn(td, "tabular")}>{count.get(d.id) ?? 0}명</td>
+                  <td className={cn(td, "tabular")}>{t("common.people", { n: count.get(d.id) ?? 0 })}</td>
                   {admin && (
                     <td className={cn(td, "whitespace-nowrap")} onClick={(e) => e.stopPropagation()}>
                       <Button
                         size="icon-sm"
                         variant="ghost"
-                        aria-label={`${d.name} 위로`}
+                        aria-label={t("org.refs.up", { name: d.name })}
                         disabled={moving}
                         onClick={() => void move(d, -1)}
                       >
@@ -135,7 +138,7 @@ export function DeptSection({ depts, vols, admin }: { depts: Department[]; vols:
                       <Button
                         size="icon-sm"
                         variant="ghost"
-                        aria-label={`${d.name} 아래로`}
+                        aria-label={t("org.refs.down", { name: d.name })}
                         disabled={moving}
                         onClick={() => void move(d, 1)}
                       >
@@ -149,7 +152,7 @@ export function DeptSection({ depts, vols, admin }: { depts: Department[]; vols:
           </table>
         </div>
       ) : (
-        <div className="px-5 py-8 text-center text-[13.5px] text-ink-3">등록된 분과·구역이 없습니다.</div>
+        <div className="px-5 py-8 text-center text-[13.5px] text-ink-3">{t("org.refs.empty")}</div>
       )}
       <EditDialog
         table="departments"
@@ -157,9 +160,9 @@ export function DeptSection({ depts, vols, admin }: { depts: Department[]; vols:
         onOpenChange={(o) => !o && setEdit(null)}
         row={edit?.row}
         defaults={defaults}
-        title={edit?.row ? "분과·구역 수정" : "분과·구역 추가"}
-        description="봉사자 소속 분과·구역(참고)에 쓰입니다."
-        deleteLabel="분과·구역을 삭제하면 이 분과로 표시된 봉사자는 '참고 분과 없음'이 됩니다."
+        title={edit?.row ? t("org.refs.editTitle") : t("org.refs.addTitle")}
+        description={t("org.refs.dlgDesc")}
+        deleteLabel={t("org.refs.deleteLabel")}
       />
     </Collapsible>
   );
@@ -172,19 +175,20 @@ const norm = (s: string) =>
 
 /** 단체별 봉사자(위원) 배정 목표 + 업무 분야별 인원 */
 export function TargetSection({ vols }: { vols: Vol[] }) {
+  const { t: tr } = useT();
   const total = VOL_ORG_TARGET.reduce((s: number, t: any) => s + t.target, 0);
   // 본당단체 이름이 목표 단체명을 포함하면 같은 단체로 셈(예: 'M.E' → ME)
   const cur = (org: string) => vols.filter((v) => v.org && norm(v.org).includes(norm(org))).length;
   return (
-    <Collapsible title="단체별 배정 목표" sub={`운영 계획안 · 1차 합계 ${total}명 내외`}>
+    <Collapsible title={tr("org.target.title")} sub={tr("org.target.sub", { n: total })}>
       <div className="grid gap-4 p-4 sm:p-5 lg:grid-cols-2">
         <div className="overflow-x-auto rounded-xl border border-line">
           <table className="w-full border-separate border-spacing-0 text-[13.5px]">
             <thead>
               <tr>
-                <th className={th}>단체</th>
-                <th className={th}>목표</th>
-                <th className={th}>현재(본당단체 기준)</th>
+                <th className={th}>{tr("org.target.org")}</th>
+                <th className={th}>{tr("org.target.target")}</th>
+                <th className={th}>{tr("org.target.current")}</th>
               </tr>
             </thead>
             <tbody>
@@ -193,16 +197,16 @@ export function TargetSection({ vols }: { vols: Vol[] }) {
                 return (
                   <tr key={t.org}>
                     <td className={cn(td, "font-medium")}>{t.org}</td>
-                    <td className={cn(td, "tabular")}>{t.target}명</td>
+                    <td className={cn(td, "tabular")}>{tr("common.people", { n: t.target })}</td>
                     <td className={td}>
-                      <Badge tone={n >= t.target ? "green" : n ? "amber" : "gray"}>{n}명</Badge>
+                      <Badge tone={n >= t.target ? "green" : n ? "amber" : "gray"}>{tr("common.people", { n })}</Badge>
                     </td>
                   </tr>
                 );
               })}
               <tr>
-                <td className={cn(td, "font-bold")}>합계</td>
-                <td className={cn(td, "font-bold tabular")}>{total}명</td>
+                <td className={cn(td, "font-bold")}>{tr("common.total")}</td>
+                <td className={cn(td, "font-bold tabular")}>{tr("common.people", { n: total })}</td>
                 <td className={td} />
               </tr>
             </tbody>
@@ -212,10 +216,10 @@ export function TargetSection({ vols }: { vols: Vol[] }) {
           <table className="w-full border-separate border-spacing-0 text-[13.5px]">
             <thead>
               <tr>
-                <th className={th}>업무 분야</th>
-                <th className={th}>최소</th>
-                <th className={th}>예비</th>
-                <th className={th}>배정</th>
+                <th className={th}>{tr("org.target.field")}</th>
+                <th className={th}>{tr("org.target.min")}</th>
+                <th className={th}>{tr("org.target.reserve")}</th>
+                <th className={th}>{tr("org.target.assigned")}</th>
               </tr>
             </thead>
             <tbody>
@@ -229,7 +233,7 @@ export function TargetSection({ vols }: { vols: Vol[] }) {
                     <td className={td}>
                       <Badge tone={gap ? "red" : "green"}>
                         {t.assigned}
-                        {gap ? ` · ${t.min + t.reserve - t.assigned}명 부족` : ""}
+                        {gap ? ` · ${tr("org.short", { n: t.min + t.reserve - t.assigned })}` : ""}
                       </Badge>
                     </td>
                   </tr>

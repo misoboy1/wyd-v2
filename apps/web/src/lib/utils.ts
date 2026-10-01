@@ -1,9 +1,10 @@
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
-import { toStr } from "@wyd/shared";
+import { fmtNum, toStr } from "@wyd/shared";
+import { getLocale } from "./i18n";
 
 export const cn = (...inputs: ClassValue[]) => twMerge(clsx(inputs));
-export const num = (n: number | null | undefined) => (n == null ? "—" : Number(n).toLocaleString("ko-KR"));
+export const num = (n: number | null | undefined) => (n == null ? "—" : fmtNum(getLocale(), Number(n)));
 const KO = new Intl.Collator("ko", { numeric: true, sensitivity: "base" });
 /** 한국어 + 숫자 자연 정렬 (P9 < P10 < P1000) */
 export const cmp = (a: unknown, b: unknown) => KO.compare(toStr(a), toStr(b));

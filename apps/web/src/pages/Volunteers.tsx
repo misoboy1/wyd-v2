@@ -9,14 +9,15 @@ import { Checkbox, SearchInput, Select } from "@/components/ui/input";
 import { PasteImport } from "@/components/form/PasteImport";
 import { useTable } from "@/lib/data";
 import { useCan } from "@/lib/auth";
+import { useT } from "@/lib/i18n";
 import { cn, matchQuery } from "@/lib/utils";
-import { useDeptMap, volsByTeam, type Vol } from "@/components/org/vol";
+import { teamName, useDeptMap, volsByTeam, type Vol } from "@/components/org/vol";
 import { VolTable, nextSort, sortVols, type VolSort } from "@/components/org/VolTable";
 import { VolunteerDialog, useOwnTeam } from "@/components/org/VolunteerDialog";
 import { TeamAdminButtons, useTeamActions } from "@/components/org/teamActions";
 import { VolPrintPicker, volExports, volPasteDef } from "@/components/org/exports";
 
-const ALL = "전체";
+const ALL = "*"; // 필터 '전체' 값(팀 이름과 겹치지 않음)
 
 /** ① 팀별 충원 현황(조직도 표준 인원 대비) — 카드를 누르면 그 팀만 보기 */
 function Staffing({
@@ -32,6 +33,7 @@ function Staffing({
   onFilter: (t: string) => void;
   admin: boolean;
 }) {
+  const { t: tr, label } = useT();
   const actions = useTeamActions(vols);
   const need = WYD_TEAMS.reduce((s: number, t: any) => s + (teamRange(t.team)?.min ?? 0), 0);
   const needMax = WYD_TEAMS.reduce((s: number, t: any) => s + (teamRange(t.team)?.max ?? 0), 0);
@@ -45,14 +47,12 @@ function Staffing({
     <Card className="mb-4 border-primary/30 bg-gradient-to-br from-primary-soft/70 to-surface p-4 sm:p-5">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <div>
-          <h2 className="text-[15px] font-bold text-ink">팀별 충원 현황</h2>
-          <p className="text-[12.5px] text-ink-3">조직도 표준 인원 대비 · 카드를 누르면 그 팀만 보기</p>
+          <h2 className="text-[15px] font-bold text-ink">{tr("org.vols.staffTitle")}</h2>
+          <p className="text-[12.5px] text-ink-3">{tr("org.vols.staffSub")}</p>
         </div>
         <div className="flex flex-wrap gap-1.5">
-          <Badge tone={assigned >= need ? "green" : "blue"}>
-            팀 배정 {assigned} / 표준 {need}~{needMax}명
-          </Badge>
-          {shortTeams > 0 && <Badge tone="red">부족 팀 {shortTeams}</Badge>}
+          <Badge tone={assigned >= need ? "green" : "blue"}>{tr("org.vols.staffAssigned", { n: assigned, min: need, max: needMax })}</Badge>
+          {shortTeams > 0 && <Badge tone="red">{tr("org.vols.shortTeams", { n: shortTeams })}</Badge>}
         </div>
       </div>
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
@@ -78,12 +78,10 @@ function Staffing({
                 {t}
               </div>
               <div className="mt-1.5">
-                <Badge tone={short ? "red" : over ? "amber" : "green"}>
-                  {n} / {rg ? rg.txt : "—"}명
-                </Badge>
+                <Badge tone={short ? "red" : over ? "amber" : "green"}>{tr("org.vols.cardCount", { n, range: rg ? rg.txt : "—" })}</Badge>
               </div>
               <div className={cn("mt-1.5 truncate text-[12px]", lead ? "text-ink-2" : "text-bad")}>
-                {lead ? `${lead.role} ${lead.name}` : "팀장 미지정"}
+                {lead ? `${label("volRole", lead.role)} ${lead.name}` : tr("org.leadMissing")}
               </div>
             </button>
           );
@@ -97,28 +95,26 @@ function Staffing({
               filter === NO_TEAM && "border-primary ring-2 ring-[var(--ring)]",
             )}
           >
-            <div className="text-[13.5px] font-bold text-bad">{NO_TEAM}</div>
+            <div className="text-[13.5px] font-bold text-bad">{tr("org.noTeam")}</div>
             <div className="mt-1.5">
-              <Badge tone="red">{none}명</Badge>
+              <Badge tone="red">{tr("common.people", { n: none })}</Badge>
             </div>
-            <div className="mt-1.5 text-[12px] text-ink-3">편집에서 팀 지정</div>
+            <div className="mt-1.5 text-[12px] text-ink-3">{tr("org.vols.pickTeam")}</div>
           </button>
         )}
       </div>
       {admin && (actions.plan.length > 0 || actions.virtual.length > 0) && (
         <div className="mt-3 flex flex-wrap items-center gap-2 text-[12.5px] text-ink-3">
           <TeamAdminButtons actions={actions} showNormalize={false} />
-          {actions.virtual.length > 0 && <span>가상 팀원 {actions.virtual.length}명 포함</span>}
+          {actions.virtual.length > 0 && <span>{tr("org.vols.virtualIncl", { n: actions.virtual.length })}</span>}
         </div>
       )}
       {admin && actions.mapped.length > 0 && (
         <div className="mt-3 flex flex-wrap items-center gap-2 rounded-lg bg-warn-soft px-3 py-2 text-[12.5px] text-warn">
           <AlertTriangle className="size-4 shrink-0" />
-          <span className="flex-1">
-            구 팀명(숙소관리·안내·통역 등)으로 입력된 봉사자 {actions.mapped.length}명은 조직도 팀으로 <b>추정</b> 표시 중입니다.
-          </span>
+          <span className="flex-1">{tr("org.vols.mappedWarn", { n: actions.mapped.length })}</span>
           <Button size="sm" variant="secondary" loading={actions.busy === "norm"} onClick={() => void actions.normalize()}>
-            팀명 표준화
+            {tr("org.act.normToast")}
           </Button>
         </div>
       )}
@@ -127,6 +123,7 @@ function Staffing({
 }
 
 export default function Volunteers() {
+  const { t: tr, locale } = useT();
   const { rows: vols, isLoading } = useTable("volunteers");
   const { depts, name: deptName } = useDeptMap();
   const { isAdmin, canWrite } = useCan();
@@ -153,33 +150,33 @@ export default function Volunteers() {
   }, [vols, tf, df, q, sort, grouped, deptName]);
 
   const writable = canWrite("volunteers");
-  const pasteDef = useMemo(() => volPasteDef("봉사자", depts, own), [depts, own]);
+  const pasteDef = useMemo(() => volPasteDef("org.paste.labelVol", depts, own, locale), [depts, own, locale]);
   const add = () => setEdit({ team: TEAM_NAMES.includes(tf) ? tf : undefined });
 
   return (
     <div>
       <PageHeader
         icon={<HandHeart />}
-        title="봉사자 명단"
-        subtitle="조직도 팀 중심 · 팀별 충원 현황과 명단 · 소속 분과·구역·본당단체는 참고사항"
+        title={tr("nav.volunteers")}
+        subtitle={tr("org.vols.subtitle")}
         actions={
           <>
             <Button size="sm" onClick={() => volExports.tasksCSV(vols, deptName)}>
               <Download />
-              엑셀(CSV)
+              {tr("org.csv")}
             </Button>
             <Button size="sm" onClick={() => volExports.tasksPrint(vols, deptName)}>
               <Printer />
-              전체 인쇄
+              {tr("org.printAll")}
             </Button>
             <Button size="sm" onClick={() => setPicker(true)}>
               <ListChecks />
-              선택 인쇄
+              {tr("org.printPick")}
             </Button>
             {writable && (
               <Button size="sm" onClick={() => setPaste(true)}>
                 <ClipboardPaste />
-                엑셀 붙여넣기
+                {tr("org.pasteExcel")}
               </Button>
             )}
           </>
@@ -189,9 +186,7 @@ export default function Volunteers() {
       {own && (
         <div className="mb-4 flex items-start gap-2 rounded-xl border border-primary/30 bg-primary-soft px-4 py-3 text-[13px] text-primary-soft-ink">
           <Info className="mt-0.5 size-4 shrink-0" />
-          <span>
-            분과 책임자 권한: <b>{own}</b> 봉사자만 추가·수정·삭제할 수 있습니다. 다른 팀은 보기만 가능합니다.
-          </span>
+          <span>{tr("org.vols.ownInfo", { team: own })}</span>
         </div>
       )}
 
@@ -204,45 +199,46 @@ export default function Volunteers() {
       {/* ② 명단: 검색·팀·분과(참고) 필터 + 팀별 묶기 */}
       <div className="sticky top-14 z-10 -mx-3 mb-3 border-b border-line bg-bg/90 px-3 py-2.5 backdrop-blur sm:top-16 sm:-mx-6 sm:px-6">
         <div className="flex flex-wrap items-center gap-2">
-          <SearchInput value={q} onChange={setQ} placeholder="검색: 이름·팀·직책·연락처·임무·언어·분과·단체" className="w-full sm:w-80" />
+          <SearchInput value={q} onChange={setQ} placeholder={tr("org.vols.searchPh")} className="w-full sm:w-80" />
           <div className="w-[calc(50%-4px)] sm:w-56">
-            <Select aria-label="팀 필터" value={tf} onChange={(e) => setTf(e.target.value)}>
-              <option value={ALL}>전체 팀 ({vols.length}명)</option>
+            <Select aria-label={tr("org.vols.teamFilter")} value={tf} onChange={(e) => setTf(e.target.value)}>
+              <option value={ALL}>{tr("org.vols.allTeams", { n: vols.length })}</option>
               {TEAM_NAMES.map((t) => (
                 <option key={t} value={t}>
-                  {t} ({(byTeam[t] || []).length}명)
+                  {tr("org.vols.optCount", { name: t, n: (byTeam[t] || []).length })}
                 </option>
               ))}
               {byTeam[NO_TEAM] && (
-                <option value={NO_TEAM}>
-                  {NO_TEAM} ({byTeam[NO_TEAM].length}명)
-                </option>
+                <option value={NO_TEAM}>{tr("org.vols.optCount", { name: teamName(tr, NO_TEAM), n: byTeam[NO_TEAM].length })}</option>
               )}
             </Select>
           </div>
           <div className="w-[calc(50%-4px)] sm:w-56">
-            <Select aria-label="분과·구역(참고) 필터" title="참고 필터" value={df} onChange={(e) => setDf(e.target.value)}>
-              <option value={ALL}>분과·구역(참고): 전체</option>
+            <Select
+              aria-label={tr("org.vols.deptFilter")}
+              title={tr("org.vols.refFilter")}
+              value={df}
+              onChange={(e) => setDf(e.target.value)}
+            >
+              <option value={ALL}>{tr("org.vols.deptAll")}</option>
               {depts.map((d) => (
                 <option key={d.id} value={String(d.id)}>
-                  {d.name} ({vols.filter((v) => v.deptId === d.id).length}명)
+                  {tr("org.vols.optCount", { name: d.name, n: vols.filter((v) => v.deptId === d.id).length })}
                 </option>
               ))}
             </Select>
           </div>
-          <Checkbox checked={grouped} onChange={setGrouped} label="팀별 묶기" />
+          <Checkbox checked={grouped} onChange={setGrouped} label={tr("org.vols.grouped")} />
           <span className="flex-1" />
           {writable && (
             <Button variant="primary" onClick={add}>
               <Plus />
-              봉사자 추가
+              {tr("org.addVolunteer")}
             </Button>
           )}
         </div>
       </div>
-      <div className="mb-2 text-[12.5px] text-ink-3">
-        표시 {data.length}명 / 전체 {vols.length}명
-      </div>
+      <div className="mb-2 text-[12.5px] text-ink-3">{tr("org.vols.shown", { n: data.length, total: vols.length })}</div>
 
       <Card className="p-0 max-md:border-0 max-md:bg-transparent max-md:shadow-none">
         {isLoading ? (
@@ -263,7 +259,7 @@ export default function Volunteers() {
             deptName={deptName}
             extraRef={(v) => {
               const ti = teamInfo(v);
-              return ti.unknown ? <span className="text-[11.5px] text-bad">입력 팀명: {v.team}</span> : null;
+              return ti.unknown ? <span className="text-[11.5px] text-bad">{tr("org.inputTeam", { team: v.team })}</span> : null;
             }}
           />
         )}

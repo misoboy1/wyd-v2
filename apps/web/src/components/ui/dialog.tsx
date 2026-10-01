@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { Dialog as D } from "radix-ui";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useT } from "@/lib/i18n";
 
 /** 모달 — 모바일에서는 아래에서 올라오는 시트 형태 */
 export function Dialog({
@@ -23,6 +24,7 @@ export function Dialog({
   size?: "sm" | "md" | "lg" | "xl";
   className?: string;
 }) {
+  const { t } = useT();
   const w = { sm: "sm:max-w-md", md: "sm:max-w-xl", lg: "sm:max-w-3xl", xl: "sm:max-w-5xl" }[size];
   return (
     <D.Root open={open} onOpenChange={onOpenChange}>
@@ -50,10 +52,10 @@ export function Dialog({
               {description ? (
                 <D.Description className="mt-0.5 text-[13px] text-ink-3">{description}</D.Description>
               ) : (
-                <D.Description className="sr-only">{typeof title === "string" ? title : "대화 상자"}</D.Description>
+                <D.Description className="sr-only">{typeof title === "string" ? title : t("shell.ui.dialog")}</D.Description>
               )}
             </div>
-            <D.Close className="-mr-1 rounded-lg p-1.5 text-ink-3 hover:bg-surface-2 hover:text-ink" aria-label="닫기">
+            <D.Close className="-mr-1 rounded-lg p-1.5 text-ink-3 hover:bg-surface-2 hover:text-ink" aria-label={t("common.close")}>
               <X className="size-4.5" />
             </D.Close>
           </div>

@@ -15,57 +15,57 @@ import {
   ShieldCheck,
   type LucideIcon,
 } from "lucide-react";
-import { VOLUNTEER_VIEW_ROLES, type Role } from "@wyd/shared";
+import { VOLUNTEER_VIEW_ROLES, type MsgKey, type Role } from "@wyd/shared";
 
 export interface NavItem {
   path: string;
-  label: string;
-  en: string;
+  /** 메뉴 라벨 메시지 키(nav.*) */
+  label: MsgKey;
   icon: LucideIcon;
   auth?: boolean;
   roles?: readonly Role[];
 }
 export interface NavGroup {
-  label: string;
+  label: MsgKey;
   items: NavItem[];
 }
 
 /** 13개 기존 탭 + 계정 관리. auth: 로그인 필요 */
 export const NAV_GROUPS: NavGroup[] = [
   {
-    label: "운영",
+    label: "nav.group.ops",
     items: [
-      { path: "/", label: "대시보드", en: "Dashboard", icon: LayoutDashboard },
-      { path: "/prep", label: "D-DAY 준비", en: "D-DAY Prep", icon: Hourglass },
-      { path: "/schedule", label: "일정표", en: "Schedule", icon: CalendarDays },
+      { path: "/", label: "nav.dash", icon: LayoutDashboard },
+      { path: "/prep", label: "nav.prep", icon: Hourglass },
+      { path: "/schedule", label: "nav.schedule", icon: CalendarDays },
     ],
   },
   {
-    label: "숙소 · 방문자",
+    label: "nav.group.stay",
     items: [
-      { path: "/visitors", label: "방문자 명단", en: "Pilgrims", icon: Users, auth: true },
-      { path: "/facilities", label: "성당시설", en: "Facilities", icon: Building2, auth: true },
-      { path: "/homestays", label: "홈스테이 가정", en: "Homestays", icon: Home, auth: true },
+      { path: "/visitors", label: "nav.visitors", icon: Users, auth: true },
+      { path: "/facilities", label: "nav.facilities", icon: Building2, auth: true },
+      { path: "/homestays", label: "nav.homestays", icon: Home, auth: true },
     ],
   },
   {
-    label: "봉사단",
+    label: "nav.group.vol",
     items: [
-      { path: "/org", label: "조직도", en: "Organization", icon: Network, auth: true, roles: VOLUNTEER_VIEW_ROLES },
-      { path: "/volunteers", label: "봉사자 명단", en: "Volunteers", icon: HandHeart, auth: true, roles: VOLUNTEER_VIEW_ROLES },
+      { path: "/org", label: "nav.org", icon: Network, auth: true, roles: VOLUNTEER_VIEW_ROLES },
+      { path: "/volunteers", label: "nav.volunteers", icon: HandHeart, auth: true, roles: VOLUNTEER_VIEW_ROLES },
     ],
   },
   {
-    label: "소통",
+    label: "nav.group.comm",
     items: [
-      { path: "/notices", label: "공지사항", en: "Notices", icon: Megaphone },
-      { path: "/posts", label: "게시판", en: "Board", icon: MessagesSquare, auth: true },
-      { path: "/qna", label: "방문자 Q&A", en: "Pilgrim Q&A", icon: CircleHelp },
-      { path: "/places", label: "추천 장소·지도", en: "Places & Map", icon: MapPin },
+      { path: "/notices", label: "nav.notices", icon: Megaphone },
+      { path: "/posts", label: "nav.posts", icon: MessagesSquare, auth: true },
+      { path: "/qna", label: "nav.qna", icon: CircleHelp },
+      { path: "/places", label: "nav.places", icon: MapPin },
     ],
   },
-  { label: "기도", items: [{ path: "/gori", label: "고리기도 일정", en: "Prayer Chain", icon: Flower2 }] },
-  { label: "관리", items: [{ path: "/admin/users", label: "계정 관리", en: "Accounts", icon: ShieldCheck, auth: true, roles: ["admin"] }] },
+  { label: "nav.group.prayer", items: [{ path: "/gori", label: "nav.gori", icon: Flower2 }] },
+  { label: "nav.group.admin", items: [{ path: "/admin/users", label: "nav.users", icon: ShieldCheck, auth: true, roles: ["admin"] }] },
 ];
 export const NAV_ITEMS = NAV_GROUPS.flatMap((g) => g.items);
 export const MOBILE_TABS = ["/", "/visitors", "/homestays", "/gori"];

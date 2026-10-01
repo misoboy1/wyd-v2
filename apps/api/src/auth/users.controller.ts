@@ -5,6 +5,7 @@ import { z } from "zod";
 import { db } from "../db/client.js";
 import { users } from "../db/schema.js";
 import { Invalid, NotFound, mapDbError } from "../common/errors.js";
+import { issuesP, tr } from "../common/i18n.js";
 import { RequireLogin, CurrentUser } from "./roles.decorator.js";
 import { UsersCache } from "./users.cache.js";
 import { ARGON } from "./auth.controller.js";
@@ -16,14 +17,14 @@ const base = z.object({
     .trim()
     .min(2)
     .max(60)
-    .regex(/^[A-Za-z0-9._@-]+$/, "아이디는 영문·숫자·._@- 만"),
+    .regex(/^[A-Za-z0-9._@-]+$/, "valid.usernameChars"),
   name: z.string().trim().max(60).default(""),
   role: z.enum(["admin", "dept", "host"]),
   team: z.string().trim().max(60).default(""),
   homestayId: z.number().int().positive().nullable().default(null),
   active: z.boolean().default(true),
 });
-const createSchema = base.extend({ password: z.string().min(8, "비밀번호는 8자 이상").max(200) });
+const createSchema = base.extend({ password: z.string().min(8, "valid.passwordMin").max(200) });
 const updateSchema = base.partial().extend({ password: z.string().min(8).max(200).optional() });
 const pub = (u: typeof users.$inferSelect) => ({
   id: u.id,
@@ -49,7 +50,7 @@ export class UsersController {
 
   @Post() async create(@Body() body: unknown) {
     const p = createSchema.safeParse(body);
-    if (!p.success) throw Invalid(p.error.issues.map((i) => `${i.path.join(".")} ${i.message}`).join(", "));
+    if (!p.success) throw Invalid("err.invalidInput", undefined, { table: tr("err.what.account"), issues: issuesP(p.error.issues) });
     const { password, ...rest } = p.data;
     try {
       const [u] = await db
@@ -64,10 +65,9 @@ export class UsersController {
 
   @Patch(":id") async update(@Param("id", ParseIntPipe) id: number, @Body() body: unknown, @CurrentUser() me: AuthUser) {
     const p = updateSchema.safeParse(body);
-    if (!p.success) throw Invalid(p.error.issues.map((i) => `${i.path.join(".")} ${i.message}`).join(", "));
+    if (!p.success) throw Invalid("err.invalidInput", undefined, { table: tr("err.what.account"), issues: issuesP(p.error.issues) });
     const { password, ...rest } = p.data;
-    if (id === me.id && ((rest.role && rest.role !== "admin") || rest.active === false))
-      throw Invalid("자기 자신의 관리자 권한은 해제할 수 없습니다.");
+    if (id === me.id && ((rest.role && rest.role !== "admin") || rest.active === false)) throw Invalid("err.users.selfDemote");
     const set: Record<string, unknown> = { ...rest };
     // 비밀번호·권한·활성 변경 시 기존 세션 무효화
     if (password || rest.role || rest.active === false || rest.team !== undefined || rest.homestayId !== undefined)
@@ -75,7 +75,7 @@ export class UsersController {
     if (password) set.passwordHash = await hash(password, ARGON);
     try {
       const [u] = await db.update(users).set(set).where(eq(users.id, id)).returning();
-      if (!u) throw NotFound("계정");
+      if (!u) throw NotFound("err.what.account");
       this.cache.invalidate(id);
       return pub(u);
     } catch (e) {
@@ -84,9 +84,9 @@ export class UsersController {
   }
 
   @Delete(":id") async remove(@Param("id", ParseIntPipe) id: number, @CurrentUser() me: AuthUser) {
-    if (id === me.id) throw Invalid("자기 자신은 삭제할 수 없습니다.");
+    if (id === me.id) throw Invalid("err.users.selfDelete");
     const r = await db.delete(users).where(eq(users.id, id)).returning({ id: users.id });
-    if (!r.length) throw NotFound("계정");
+    if (!r.length) throw NotFound("err.what.account");
     this.cache.invalidate(id);
     return { ok: true };
   }

@@ -6,11 +6,14 @@ import { Home, Search, User, HandHeart } from "lucide-react";
 import { NAV_ITEMS } from "@/lib/nav";
 import { useTable } from "@/lib/data";
 import { useAuth } from "@/lib/auth";
+import { useT } from "@/lib/i18n";
+import { translate } from "@wyd/shared";
 
 /** ⌘K — 메뉴 이동 + 방문자(P번호·이름)·홈스테이(H번호·대표자)·봉사자 검색 */
 export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
   const nav = useNavigate();
   const { user } = useAuth();
+  const { t, locale } = useT();
   const [q, setQ] = useState("");
   const { rows: visitors } = useTable("visitors");
   const { rows: homestays } = useTable("homestays");
@@ -41,38 +44,40 @@ export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenCh
       <D.Portal>
         <D.Overlay className="fixed inset-0 z-50 bg-black/40 backdrop-blur-[2px]" />
         <D.Content className="fixed top-[12vh] left-1/2 z-50 w-[92vw] max-w-xl -translate-x-1/2 overflow-hidden rounded-2xl border border-line bg-surface shadow-pop outline-none">
-          <D.Title className="sr-only">검색</D.Title>
-          <D.Description className="sr-only">메뉴와 명단 검색</D.Description>
-          <Command shouldFilter={false} label="검색">
+          <D.Title className="sr-only">{t("shell.search")}</D.Title>
+          <D.Description className="sr-only">{t("shell.palette.desc")}</D.Description>
+          <Command shouldFilter={false} label={t("shell.search")}>
             <div className="flex items-center gap-2 border-b border-line px-4">
               <Search className="size-4.5 text-ink-3" />
               <Command.Input
                 autoFocus
                 value={q}
                 onValueChange={setQ}
-                placeholder="메뉴, 방문자 이름·P번호, 가정 H번호…"
+                placeholder={t("shell.palette.placeholder")}
                 className="h-13 flex-1 bg-transparent text-[15px] outline-none placeholder:text-ink-3"
               />
             </div>
             <Command.List className="max-h-[60vh] overflow-y-auto p-2">
-              <Command.Empty className="py-8 text-center text-[13.5px] text-ink-3">검색 결과가 없습니다.</Command.Empty>
+              <Command.Empty className="py-8 text-center text-[13.5px] text-ink-3">{t("common.noResults")}</Command.Empty>
               <Command.Group
-                heading="메뉴"
+                heading={t("shell.menu")}
                 className="[&_[cmdk-group-heading]]:px-3 [&_[cmdk-group-heading]]:py-1.5 [&_[cmdk-group-heading]]:text-[12px] [&_[cmdk-group-heading]]:text-ink-3"
               >
                 {NAV_ITEMS.filter(
-                  (i) => (!i.roles || (user && i.roles.includes(user.role))) && (!term || (i.label + i.en).toLowerCase().includes(term)),
+                  (i) =>
+                    (!i.roles || (user && i.roles.includes(user.role))) &&
+                    (!term || `${t(i.label)} ${translate("ko", i.label)} ${translate("en", i.label)}`.toLowerCase().includes(term)),
                 ).map((i) => (
                   <Command.Item key={i.path} value={"nav:" + i.path} onSelect={() => go(i.path)} className={item}>
                     <i.icon />
-                    {i.label}
-                    <span className="ml-auto text-[12px] text-ink-3">{i.en}</span>
+                    {t(i.label)}
+                    {locale !== "en" && <span className="ml-auto text-[12px] text-ink-3">{translate("en", i.label)}</span>}
                   </Command.Item>
                 ))}
               </Command.Group>
               {!!people.length && (
                 <Command.Group
-                  heading="방문자"
+                  heading={t("shell.palette.visitors")}
                   className="[&_[cmdk-group-heading]]:px-3 [&_[cmdk-group-heading]]:py-1.5 [&_[cmdk-group-heading]]:text-[12px] [&_[cmdk-group-heading]]:text-ink-3"
                 >
                   {people.map((v) => (
@@ -94,7 +99,7 @@ export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenCh
               )}
               {!!hosts.length && (
                 <Command.Group
-                  heading="홈스테이 가정"
+                  heading={t("shell.palette.homestays")}
                   className="[&_[cmdk-group-heading]]:px-3 [&_[cmdk-group-heading]]:py-1.5 [&_[cmdk-group-heading]]:text-[12px] [&_[cmdk-group-heading]]:text-ink-3"
                 >
                   {hosts.map((h) => (
@@ -109,7 +114,7 @@ export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenCh
               )}
               {!!staff.length && (
                 <Command.Group
-                  heading="봉사자"
+                  heading={t("shell.palette.volunteers")}
                   className="[&_[cmdk-group-heading]]:px-3 [&_[cmdk-group-heading]]:py-1.5 [&_[cmdk-group-heading]]:text-[12px] [&_[cmdk-group-heading]]:text-ink-3"
                 >
                   {staff.map((v) => (

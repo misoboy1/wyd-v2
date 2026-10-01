@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/input";
 import { useAuth } from "@/lib/auth";
 import { errorMessage } from "@/lib/data";
+import { useT } from "@/lib/i18n";
 
 export function LoginDialog() {
   const { loginOpen, setLoginOpen, login } = useAuth();
@@ -12,6 +13,7 @@ export function LoginDialog() {
   const [p, setP] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
+  const { t } = useT();
   const submit = async (e?: React.FormEvent) => {
     e?.preventDefault();
     setBusy(true);
@@ -20,7 +22,7 @@ export function LoginDialog() {
       await login(u.trim(), p);
       setLoginOpen(false);
       setP("");
-      toast.success("로그인했습니다.");
+      toast.success(t("shell.loginDlg.done"));
     } catch (x) {
       setErr(errorMessage(x));
     } finally {
@@ -32,19 +34,19 @@ export function LoginDialog() {
       open={loginOpen}
       onOpenChange={setLoginOpen}
       size="sm"
-      title="로그인"
-      description="봉사자 계정으로 로그인하세요. 계정은 본당 관리자가 발급합니다."
+      title={t("shell.login")}
+      description={t("shell.loginDlg.desc")}
       footer={
         <Button variant="primary" loading={busy} onClick={() => void submit()} disabled={!u || !p}>
-          로그인
+          {t("shell.login")}
         </Button>
       }
     >
       <form onSubmit={submit} className="flex flex-col gap-3.5">
-        <Field label="아이디">
+        <Field label={t("shell.loginDlg.username")}>
           <Input data-autofocus autoComplete="username" value={u} onChange={(e) => setU(e.target.value)} />
         </Field>
-        <Field label="비밀번호" error={err}>
+        <Field label={t("shell.loginDlg.password")} error={err}>
           <Input type="password" autoComplete="current-password" value={p} onChange={(e) => setP(e.target.value)} />
         </Field>
         <button type="submit" className="hidden" />

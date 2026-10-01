@@ -8,6 +8,7 @@ import { EditDialog } from "@/components/form/EditDialog";
 import { useTable } from "@/lib/data";
 import { useCan } from "@/lib/auth";
 import { cn } from "@/lib/utils";
+import { useT } from "@/lib/i18n";
 import { Tel } from "./bits";
 
 /**
@@ -29,6 +30,7 @@ export function TeamRoster({
   keywords?: string[];
   className?: string;
 }) {
+  const { t, label } = useT();
   const { rows, enabled } = useTable("volunteers");
   const { user, canWrite } = useCan();
   const [adding, setAdding] = useState(false);
@@ -54,11 +56,11 @@ export function TeamRoster({
           <div className="mt-0.5 text-[12.5px] text-ink-3">{desc}</div>
         </div>
         <div className="flex items-center gap-1.5">
-          <Badge tone={list.length ? "blue" : "amber"}>{list.length}명</Badge>
+          <Badge tone={list.length ? "blue" : "amber"}>{t("common.people", { n: list.length })}</Badge>
           {canAdd && (
             <Button size="sm" variant="secondary" onClick={() => setAdding(true)}>
               <UserPlus />
-              팀원 추가
+              {t("stay.team.add")}
             </Button>
           )}
         </div>
@@ -69,16 +71,18 @@ export function TeamRoster({
             <div key={v.id} className="rounded-xl border border-line bg-surface px-3 py-2">
               <div className="flex items-center gap-1.5">
                 <b className="truncate text-[14px] text-ink">{v.name}</b>
-                <Badge tone={roleColor(v.role) === "amber" ? "amber" : "gray"}>{v.role || "팀원"}</Badge>
+                <Badge tone={roleColor(v.role) === "amber" ? "amber" : "gray"}>{label("volRole", v.role || "팀원")}</Badge>
               </div>
-              <div className="mt-0.5 text-[12.5px]">{v.tel ? <Tel tel={v.tel} /> : <span className="text-ink-3">연락처 미입력</span>}</div>
+              <div className="mt-0.5 text-[12.5px]">
+                {v.tel ? <Tel tel={v.tel} /> : <span className="text-ink-3">{t("stay.team.noTel")}</span>}
+              </div>
             </div>
           ))}
         </div>
       ) : (
         <p className="py-1 text-[12.5px] text-ink-3">
-          아직 {teamName} 봉사자가 등록되지 않았습니다.
-          {canAdd && ` 봉사자 명단·조직도에서 팀을 '${teamName}'으로 지정하면 여기에 자동으로 표시됩니다.`}
+          {t("stay.team.none", { team: teamName })}
+          {canAdd && t("stay.team.noneHint", { team: teamName })}
         </p>
       )}
       {canAdd && (
@@ -87,7 +91,7 @@ export function TeamRoster({
           open={adding}
           onOpenChange={setAdding}
           defaults={(ADD_DEFAULTS[teamName] ??= { team: teamName })}
-          title={`${teamName} 팀원 추가`}
+          title={t("stay.team.addTitle", { team: teamName })}
         />
       )}
     </Card>

@@ -2,14 +2,17 @@
 import {
   PARISH,
   cmpStr,
+  enumLabel,
   famText,
   isSleepRoom,
   reqSex,
   roleRank,
   teamOf,
   teamOrder,
+  translateDynamic,
   zoneApt,
   type Department,
+  type EnumGroup,
   type Facility,
   type Homestay,
   type Visitor,
@@ -17,7 +20,7 @@ import {
 } from "@wyd/shared";
 import { downloadCSV } from "@/lib/csv";
 import { printDocument } from "@/lib/print";
-import { num } from "@/lib/utils";
+import { getLocale, tt } from "@/lib/i18n";
 import type { Totals } from "./stats";
 
 export interface AllData {
@@ -34,22 +37,27 @@ interface Def {
   rows: Cell[][];
 }
 
+type Sheet = "visitors" | "homestays" | "volunteers" | "facilities";
+/** 열 머리글 — dash.export.<sheet>.cols.<key> */
+const cols = (sheet: Sheet, keys: string[]) => keys.map((k) => translateDynamic(getLocale(), `dash.export.${sheet}.cols.${k}`));
+
 const FAC_PINNED_BOTTOM = ["만남의방(카페)", "대성전"]; // 항상 맨 아래(이 순서)
 const rnoNum = (f: Facility) => Number(String(f.rno || "").replace(/\D/g, "")) || 0;
 
 function defs(d: AllData, T: Totals): Def[] {
   const { I } = T;
+  const L = (g: EnumGroup, v: string | null | undefined) => enumLabel(getLocale(), g, v);
   const deptName = new Map(d.departments.map((x) => [x.id, x.name]));
   const stayLabel = (v: Visitor) => {
     if (v.facilityId != null) {
       const f = I.facilityById.get(v.facilityId);
-      return f && isSleepRoom(f) ? "교리실 " + f.name : "연결 끊김(교리실)";
+      return f && isSleepRoom(f) ? tt("dash.export.stayRoom", { name: f.name }) : tt("dash.export.orphanRoom");
     }
     if (v.homestayId != null) {
       const h = I.homestayById.get(v.homestayId);
-      return h ? "홈 " + (h.hid ? h.hid + " " : "") + (h.host || "") : "연결 끊김(홈스테이)";
+      return h ? tt("dash.export.stayHome", { name: [h.hid, h.host].filter(Boolean).join(" ") }) : tt("dash.export.orphanHs");
     }
-    return v.orphanStay ? `연결 끊김(${v.orphanStay})` : "미배정";
+    return v.orphanStay ? tt("dash.export.orphanRaw", { v: v.orphanStay }) : tt("dash.export.unassigned");
   };
   const visitors = d.visitors.slice().sort((a, b) => cmpStr(a.pid || "", b.pid || ""));
   const homestays = d.homestays.slice().sort((a, b) => cmpStr(a.hid || "", b.hid || ""));
@@ -62,13 +70,26 @@ function defs(d: AllData, T: Totals): Def[] {
     .sort((a, b) => FAC_PINNED_BOTTOM.indexOf(a.name) - FAC_PINNED_BOTTOM.indexOf(b.name));
   return [
     {
-      title: "방문자(순례자) 명단",
-      cols: ["번호", "그룹", "이름", "성별", "국가", "언어", "숙박 장소", "기간", "역할", "상태", "연락처", "비고"],
-      rows: visitors.map((v) => [v.pid, v.gno, v.name, v.sex, v.country, v.lang, stayLabel(v), v.stay, v.role, v.status, v.tel, v.note]),
+      title: tt("dash.export.visitors.title"),
+      cols: cols("visitors", ["pid", "gno", "name", "sex", "country", "lang", "stay", "period", "role", "status", "tel", "note"]),
+      rows: visitors.map((v) => [
+        v.pid,
+        v.gno,
+        v.name,
+        L("sex", v.sex),
+        v.country,
+        v.lang,
+        stayLabel(v),
+        v.stay,
+        v.role,
+        L("visitorStatus", v.status),
+        v.tel,
+        v.note,
+      ]),
     },
     {
-      title: "홈스테이 가정 명단",
-      cols: ["번호", "구역", "아파트단지", "가정", "주소", "연락처", "가족 인원", "언어", "수용", "요청 성별", "상태", "숙박자", "비고"],
+      title: tt("dash.export.homestays.title"),
+      cols: cols("homestays", ["hid", "zone", "apt", "host", "addr", "tel", "family", "lang", "cap", "reqSex", "status", "guests", "note"]),
       rows: homestays.map((h) => [
         h.hid,
         h.zone,
@@ -79,18 +100,19 @@ function defs(d: AllData, T: Totals): Def[] {
         famText(h, undefined),
         h.lang,
         h.cap ?? "",
-        reqSex(h),
-        h.status,
-        (I.byHomestay.get(h.id) ?? []).map((p) => `${p.pid || ""} ${p.name}(${p.country || ""})`).join(" / ") || "미배정",
+        L("sex", reqSex(h)),
+        L("homestayStatus", h.status),
+        (I.byHomestay.get(h.id) ?? []).map((p) => `${p.pid || ""} ${p.name}(${p.country || ""})`).join(" / ") ||
+          tt("dash.export.unassigned"),
         h.note,
       ]),
     },
     {
-      title: "봉사자 명단 (팀 중심)",
-      cols: ["팀", "직책", "이름", "연락처", "담당 임무", "언어 구사", "참고: 분과·구역", "참고: 본당단체", "비고"],
+      title: tt("dash.export.volunteers.title"),
+      cols: cols("volunteers", ["team", "role", "name", "tel", "task", "langs", "dept", "org", "note"]),
       rows: vols.map((t) => [
         teamOf(t),
-        t.role,
+        L("volRole", t.role),
         t.name,
         t.tel,
         t.task,
@@ -101,15 +123,19 @@ function defs(d: AllData, T: Totals): Def[] {
       ]),
     },
     {
-      title: "성당시설 (교리실·수용 현황)",
-      cols: ["번호", "공간", "유형", "상태", "숙박 방문자(배정/수용)", "남녀", "냉방", "비고", "면적(실측)"],
+      title: tt("dash.export.facilities.title"),
+      cols: cols("facilities", ["rno", "name", "type", "status", "guests", "gender", "ac", "note", "area"]),
       rows: [...facN, ...facP].map((f) => [
         f.rno,
         f.name,
         f.type,
-        f.status,
-        isSleepRoom(f) ? `${(I.byFacility.get(f.id) ?? []).length}/${f.cap ?? "—"}` : f.cap ? f.cap + "석" : "",
-        f.gender || "공용",
+        L("facilityStatus", f.status),
+        isSleepRoom(f)
+          ? `${(I.byFacility.get(f.id) ?? []).length}/${f.cap ?? "—"}`
+          : f.cap
+            ? tt("dash.export.seats", { n: Number(f.cap) })
+            : "",
+        L("sex", f.gender || "공용"),
         f.ac,
         f.note,
         f.area,
@@ -126,25 +152,29 @@ export function downloadAllCSV(d: AllData, T: Totals) {
   const lines: Cell[][] = [];
   D.forEach((x, i) => {
     if (i) lines.push([]); // 섹션 사이 빈 줄
-    lines.push([`${NO[i]} ${x.title} (${x.rows.length}건)`], x.cols, ...x.rows);
+    lines.push([tt("dash.export.section", { no: NO[i], title: x.title, n: x.rows.length })], x.cols, ...x.rows);
   });
   const [head, ...rest] = lines;
-  downloadCSV(`${PARISH.name}_WYD_종합명단`, head as string[], rest);
+  downloadCSV(`${PARISH.name}_WYD_${tt("dash.export.fileName")}`, head as string[], rest);
 }
 
 export function printAll(d: AllData, T: Totals) {
   const D = defs(d, T);
   printDocument(
-    `${PARISH.name} WYD 종합 명단 보고서`,
-    D.map((x, i) => ({ heading: `${NO[i]} ${x.title} · ${x.rows.length}건`, columns: x.cols, rows: x.rows })),
+    tt("dash.export.reportTitle", { parish: PARISH.name }),
+    D.map((x, i) => ({
+      heading: tt("dash.export.sectionPrint", { no: NO[i], title: x.title, n: x.rows.length }),
+      columns: x.cols,
+      rows: x.rows,
+    })),
     {
       kpis: [
-        ["방문자(순례자)", num(T.total) + "명"],
-        ["홈스테이 가정", num(d.homestays.length) + "곳"],
-        ["배정 완료", num(T.inRoom + T.inHs) + "명"],
-        ["미배정", num(T.unassigned) + "명"],
-        ["봉사자", num(d.volunteers.length) + "명"],
-        ["숙박 시설", d.facilities.filter(isSleepRoom).length + "실"],
+        [tt("dash.export.kpi.visitors"), tt("common.people", { n: T.total })],
+        [tt("dash.export.kpi.families"), tt("dash.quick.families", { n: d.homestays.length })],
+        [tt("dash.export.kpi.assigned"), tt("common.people", { n: T.inRoom + T.inHs })],
+        [tt("dash.export.kpi.unassigned"), tt("common.people", { n: T.unassigned })],
+        [tt("dash.export.kpi.volunteers"), tt("common.people", { n: d.volunteers.length })],
+        [tt("dash.export.kpi.rooms"), tt("dash.export.rooms", { n: d.facilities.filter(isSleepRoom).length })],
       ],
     },
   );

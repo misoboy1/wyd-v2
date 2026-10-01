@@ -6,6 +6,7 @@ import { currentPhaseId, sortPrep } from "@/components/dash/prepUtil";
 import { useSave, useTable } from "@/lib/data";
 import { useCan } from "@/lib/auth";
 import { cn } from "@/lib/utils";
+import { useT } from "@/lib/i18n";
 import { Empty, PageHeader, Progress, Skeleton, Stat } from "@/components/ui/misc";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -34,6 +35,7 @@ function StepCard({
   onMove: (d: -1 | 1) => void;
 }) {
   const done = !!p.done;
+  const { t } = useT();
   return (
     <li className="relative pl-9">
       {/* 타임라인 점 */}
@@ -58,7 +60,7 @@ function StepCard({
             aria-checked={done}
             disabled={!canEdit}
             onClick={onToggle}
-            aria-label={`${p.title} ${done ? "완료 해제" : "완료 표시"}`}
+            aria-label={t(done ? "dash.prep.unmarkDone" : "dash.prep.markDone", { title: p.title })}
             className={cn(
               "mt-0.5 flex size-5.5 shrink-0 items-center justify-center rounded-md border-2 transition",
               done ? "border-good bg-good text-white" : "border-line-strong bg-surface",
@@ -70,8 +72,8 @@ function StepCard({
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-1.5">
               <Badge tone={current ? "blue" : "gray"}>{p.phase}</Badge>
-              {current && <Badge tone="gold">지금 이 시기</Badge>}
-              {done && <Badge tone="green">완료</Badge>}
+              {current && <Badge tone="gold">{t("dash.prep.current")}</Badge>}
+              {done && <Badge tone="green">{t("dash.prep.done")}</Badge>}
             </div>
             <h3 className={cn("mt-1.5 text-[15px] font-semibold text-ink", done && "line-through decoration-ink-3/50")}>{p.title}</h3>
             {p.detail && <p className="mt-1 text-[13px] leading-relaxed whitespace-pre-wrap text-ink-2">{p.detail}</p>}
@@ -84,13 +86,13 @@ function StepCard({
           </div>
           {canEdit && (
             <div className="-mt-1 -mr-1 flex shrink-0 flex-col items-center sm:flex-row">
-              <Button size="icon-sm" variant="ghost" aria-label="위로" disabled={first || busy} onClick={() => onMove(-1)}>
+              <Button size="icon-sm" variant="ghost" aria-label={t("dash.prep.up")} disabled={first || busy} onClick={() => onMove(-1)}>
                 <ArrowUp />
               </Button>
-              <Button size="icon-sm" variant="ghost" aria-label="아래로" disabled={last || busy} onClick={() => onMove(1)}>
+              <Button size="icon-sm" variant="ghost" aria-label={t("dash.prep.down")} disabled={last || busy} onClick={() => onMove(1)}>
                 <ArrowDown />
               </Button>
-              <Button size="icon-sm" variant="ghost" aria-label={`${p.title} 편집`} onClick={onEdit}>
+              <Button size="icon-sm" variant="ghost" aria-label={t("dash.prep.editAria", { title: p.title })} onClick={onEdit}>
                 <Pencil />
               </Button>
             </div>
@@ -105,6 +107,7 @@ export default function Prep() {
   const { rows, isLoading } = useTable("prep");
   const save = useSave("prep");
   const { canWrite } = useCan();
+  const { t } = useT();
   const editable = canWrite("prep");
   const [edit, setEdit] = useState<{ row: PrepStep | null } | null>(null);
   const [moving, setMoving] = useState(false);
@@ -136,23 +139,32 @@ export default function Prep() {
     <div>
       <PageHeader
         icon={<Hourglass />}
-        title="D-DAY 준비 일정"
-        subtitle="2027 서울 WYD 개막(8/3)까지 기간별 사전 준비 · 매뉴얼 준비편·기도의 날 기반"
+        title={t("dash.prepLink")}
+        subtitle={t("dash.prep.subtitle")}
         actions={
           editable && (
             <Button variant="primary" onClick={() => setEdit({ row: null })}>
               <Plus />
-              추가
+              {t("common.add")}
             </Button>
           )
         }
       />
 
       <div className="mb-3 grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <Stat label="본대회 개막까지" value={ddText(WYD_OPEN, today)} tone="primary" hint={`개막미사 ${WYD_OPEN}`} />
-        <Stat label="교구대회까지 (7/29)" value={ddText(WYD_DIOCESE, today)} hint={`교구대회 ${WYD_DIOCESE}`} />
-        <Stat label="준비 진행률" value={`${pct}%`} tone={pct === 100 ? "good" : "warn"} />
-        <Stat label="완료 / 전체 단계" value={`${doneN} / ${list.length}`} />
+        <Stat
+          label={t("dash.prep.toOpen")}
+          value={ddText(WYD_OPEN, today)}
+          tone="primary"
+          hint={t("dash.prep.openHint", { date: WYD_OPEN })}
+        />
+        <Stat
+          label={t("dash.prep.toDiocese")}
+          value={ddText(WYD_DIOCESE, today)}
+          hint={t("dash.prep.dioceseHint", { date: WYD_DIOCESE })}
+        />
+        <Stat label={t("dash.prep.progress")} value={`${pct}%`} tone={pct === 100 ? "good" : "warn"} />
+        <Stat label={t("dash.prep.doneOfTotal")} value={`${doneN} / ${list.length}`} />
       </div>
       <Progress value={pct} tone="good" className="mb-6" />
 
@@ -163,13 +175,13 @@ export default function Prep() {
           ))}
         </div>
       ) : !list.length ? (
-        <Empty icon={<Hourglass />} title="등록된 준비 단계가 없습니다.">
-          {editable && "‘추가’로 준비 단계를 등록하세요."}
+        <Empty icon={<Hourglass />} title={t("dash.prep.empty")}>
+          {editable && t("dash.prep.emptyHint")}
         </Empty>
       ) : (
         <ol
           className="relative space-y-3 before:absolute before:top-2 before:bottom-2 before:left-[15px] before:w-px before:bg-line"
-          aria-label="준비 단계"
+          aria-label={t("dash.prep.listAria")}
         >
           {list.map((p, i) => (
             <StepCard
@@ -187,7 +199,7 @@ export default function Prep() {
           ))}
         </ol>
       )}
-      <p className="mt-4 text-[12.5px] text-ink-3">※ 시기·항목은 본당 상황에 맞게 추가·수정하세요. 체크박스로 완료 표시가 됩니다.</p>
+      <p className="mt-4 text-[12.5px] text-ink-3">{t("dash.prep.footnote")}</p>
 
       <EditDialog
         table="prep"
@@ -195,8 +207,8 @@ export default function Prep() {
         onOpenChange={(o) => !o && setEdit(null)}
         row={edit?.row ?? null}
         defaults={defaults}
-        title={edit?.row ? "준비 단계 편집" : "준비 단계 추가"}
-        deleteLabel="이 준비 단계를 삭제합니다."
+        title={edit?.row ? t("dash.prep.editTitle") : t("dash.prep.addTitle")}
+        deleteLabel={t("dash.prep.deleteLabel")}
       />
     </div>
   );
