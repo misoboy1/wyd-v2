@@ -55,6 +55,11 @@
 
 4. **Create repository**를 눌러요. 저장소 주소는 `https://github.com/내아이디/wyd-v2` 예요.
 
+> 📝 **현재 상태:** 실제 저장소 `misoboy1/wyd-v2`는 **공개(Public)** 로 만들어져 있어요.
+> 저장소에는 코드만 있고 실제 데이터(DB·사진)와 `.env`는 서버에만 있어서 바로 유출되는 정보는 없어요.
+> 공개 저장소면 서버 설정이 더 간단해져요([4단계](#4단계-서버가-스스로-가져가게-설정하기-30분-ssh-창) 참고).
+> 비공개로 바꾸려면 저장소 → **Settings** → 맨 아래 **Danger Zone** → **Change visibility**예요.
+
 ---
 
 ## 2단계. Mac에서 코드 올리기 (10분, Mac 터미널)
@@ -76,6 +81,11 @@ gh auth login
 | How would you like to authenticate? | **Login with a web browser** |
 
 화면에 나온 **8자리 코드**를 복사하고 엔터를 누르면 브라우저가 열려요. 코드를 붙여 넣고 **Authorize**를 누르면 끝이에요.
+
+> 💡 브라우저가 안 열리면 https://github.com/login/device 에 직접 들어가서 코드를 넣으세요.
+> 코드를 넣을 때까지 터미널은 **멈춘 것처럼 기다려요**. 고장 난 게 아니에요.
+> Claude Code에서 `! gh auth login`으로 실행하면 2분 뒤 백그라운드로 넘어가요. 그래도 브라우저에서 승인하면 로그인돼요.
+> `gh auth status`에 `✓ Logged in to github.com`이 보이면 성공이에요.
 
 ### 2-2. 저장소 연결하고 올리기
 
@@ -101,6 +111,22 @@ git push -u origin main
 > ❌가 떴다면 눌러서 빨간 줄의 오류 문장을 확인하세요. **check** 단계 실패는 코드 검사에 떨어진 거예요.
 > Mac에서 `npm run check`를 돌려 고친 뒤 다시 커밋하고 push하면 돼요.
 
+### 3-1. (선택) 창고 패키지를 공개로 바꾸기
+
+처음 만들어진 `wyd-api`·`wyd-web` 패키지는 **비공개**예요. 비공개면 서버에서 꺼낼 때 창고 토큰(4-2단계)이 필요해요.
+저장소가 공개라면 패키지도 공개로 바꿔서 토큰 없이 쓰는 게 간단해요.
+
+> ⚠️ 패키지는 한 번 공개하면 **다시 비공개로 바꿀 수 없어요.**
+> 이미지에 비밀값이 들어 있지 않은지 확인한 다음 바꾸세요. 지금 이미지에는 `.env`가 들어가지 않아요.
+
+1. 아래 두 주소에 들어가요(`misoboy1` 자리는 내 아이디).
+   - https://github.com/users/misoboy1/packages/container/wyd-api/settings
+   - https://github.com/users/misoboy1/packages/container/wyd-web/settings
+2. 맨 아래 **Danger Zone** → **Change visibility** → **Public**을 골라요.
+3. 확인 칸에 패키지 이름(`wyd-api` / `wyd-web`)을 입력하고 확인해요.
+
+GitHub 명령으로는 공개 범위를 바꿀 수 없어서 브라우저에서 해야 해요.
+
 ---
 
 ## 4단계. 서버가 스스로 가져가게 설정하기 (30분, SSH 창)
@@ -114,7 +140,22 @@ git push -u origin main
 
 둘 다 "읽기만" 할 수 있어서, 서버가 해킹당해도 코드를 망가뜨릴 수는 없어요.
 
-### 4-1. 배포 키 만들기
+> ✅ **저장소와 패키지가 둘 다 공개라면 열쇠가 하나도 필요 없어요.** (지금 `misoboy1/wyd-v2`가 이 경우예요)
+> **4-0 → 4-3(공개용 주소) → 4-4 → 4-5 → 4-6** 순서로 하고, 4-1·4-2는 건너뛰세요.
+> 나중에 저장소를 비공개로 바꾸면 4-1을, 패키지를 비공개로 두면 4-2를 해야 해요.
+
+### 4-0. git 설치하기
+
+GCP의 기본 서버에는 git이 없을 수 있어요.
+
+```bash
+sudo apt-get update -q && sudo apt-get install -y git
+git --version
+```
+
+`git version 2.xx.x`가 나오면 성공이에요.
+
+### 4-1. 배포 키 만들기 (비공개 저장소만)
 
 ```bash
 ssh-keygen -t ed25519 -f ~/.ssh/wyd_deploy -N "" -C wyd-server
@@ -144,7 +185,7 @@ ssh -T git@github.com
 `Are you sure you want to continue connecting (yes/no)?`가 나오면 **`yes`** 를 입력하고 엔터를 눌러요.
 `Hi 내아이디/wyd-v2! You've successfully authenticated...`가 나오면 성공이에요. (뒤에 나오는 "does not provide shell access"는 정상이에요.)
 
-### 4-2. 창고 토큰 만들고 로그인하기
+### 4-2. 창고 토큰 만들고 로그인하기 (비공개 패키지만)
 
 먼저 브라우저에서 토큰을 만들어요.
 
@@ -171,10 +212,12 @@ echo "$T" | docker login ghcr.io -u 내아이디 --password-stdin; unset T
 지금 서버의 `~/wyd`는 압축을 푼 폴더예요. 이걸 GitHub 저장소와 연결된 폴더로 바꿔요.
 `.env`(비밀 쪽지)와 `backups`(백업)는 저장소에 없는 파일이라 **그대로 남아요**.
 
+저장소가 **공개**면 셋째 줄 주소를 `https://github.com/내아이디/wyd-v2.git`로, **비공개**면 `git@github.com:내아이디/wyd-v2.git`로 적어요.
+
 ```bash
 cd ~/wyd
 git init -q -b main
-git remote add origin git@github.com:내아이디/wyd-v2.git
+git remote add origin https://github.com/내아이디/wyd-v2.git
 git fetch -q origin
 git checkout -f -B main --track origin/main
 git status
@@ -182,7 +225,9 @@ git status
 
 마지막에 `Your branch is up to date with 'origin/main'`과 `nothing to commit`이 보이면 성공이에요.
 
-> ❗ `git: command not found`가 나오면 `sudo apt-get install -y git`으로 설치한 뒤 다시 해요.
+> ❗ `git: command not found`가 나오면 4-0단계를 먼저 해요.
+> `error: remote origin already exists`가 나오면 이미 연결한 적이 있는 거예요. 다음 줄부터 계속하면 돼요.
+> 나중에 공개 → 비공개로 바꿨다면 4-1을 한 뒤 `git remote set-url origin git@github.com:내아이디/wyd-v2.git`으로 주소를 바꿔요.
 
 ### 4-4. .env에 창고 주소 적기
 
@@ -221,12 +266,33 @@ docker builder prune -af
 
 4-5에서 한 번 실행해 봤으니, 이제 5분마다 자동으로 돌도록 등록해요.
 
+먼저 알람 프로그램(cron)을 설치하고 켜요. GCP의 기본 Debian 서버에는 cron이 없을 수 있어요.
+(설치돼 있지 않으면 아래 등록 명령에서 `crontab: command not found`가 나와요.)
+
+```bash
+sudo apt-get install -y cron
+sudo systemctl enable --now cron
+systemctl is-active cron
+```
+
+`active`가 나오면 성공이에요. 이제 알람을 등록해요. **한 번만** 실행하세요.
+
 ```bash
 (crontab -l 2>/dev/null; echo '*/5 * * * * $HOME/wyd/scripts/auto-deploy.sh >> $HOME/wyd-deploy.log 2>&1') | crontab -
 crontab -l
 ```
 
-마지막 줄에 `*/5 * * * * $HOME/wyd/scripts/auto-deploy.sh ...`가 보이면 설정 끝이에요. 🎉
+마지막 줄에 `*/5 * * * * $HOME/wyd/scripts/auto-deploy.sh ...`가 **한 줄만** 보이면 설정 끝이에요. 🎉
+(두 줄이 보이면 `crontab -r`로 모두 지우고 위 명령을 한 번 더 실행해요.)
+
+5분 뒤 알람이 실제로 울렸는지 확인해요.
+
+```bash
+sudo journalctl -u cron --since "10 min ago" | tail -5
+```
+
+`CMD ($HOME/wyd/scripts/auto-deploy.sh ...)`가 보이면 잘 돌고 있는 거예요.
+`~/wyd-deploy.log`가 비어 있어도 정상이에요. 이미 최신 버전이라 바꿀 게 없어서 조용히 넘어간 거예요.
 
 ---
 
@@ -319,7 +385,10 @@ tail -20 ~/wyd-deploy.log
 | Actions에 ❌, **images** 단계에서 `denied` / `permission` | 같은 이름의 패키지를 예전에 손으로 만든 적이 있으면 생겨요. 내 프로필 → Packages → 해당 패키지 → Package settings → **Manage Actions access**에 이 저장소를 추가(Write) |
 | 로그에 `중단: .env에 IMAGE_REPO가 없습니다` | 4-4단계를 안 했어요 |
 | 로그에 `중단: 이미지 확인 실패` 또는 `이미지 받기 실패` | 창고 토큰 문제예요. 4-2단계 `docker login`을 다시 해요. 토큰이 만료됐으면 새로 만들어요. `IMAGE_REPO`의 아이디가 **소문자**인지도 확인 |
-| 로그에 `중단: git fetch 실패` | 배포 키 문제예요. `ssh -T git@github.com`으로 확인(4-1단계) |
+| 로그에 `중단: git fetch 실패` | 비공개 저장소면 배포 키 문제예요. `ssh -T git@github.com`으로 확인(4-1단계). 공개 저장소(https 주소)면 인터넷 문제이거나 저장소를 비공개로 바꾼 거예요(4-3단계 마지막 안내) |
+| 로그에 `이미지 확인 실패`인데 패키지는 공개로 바꿨어요 | 패키지 페이지에서 `wyd-api`·`wyd-web` **둘 다** Public인지 확인(3-1단계) |
+| `crontab: command not found` | cron이 설치되지 않았어요. 4-6단계의 cron 설치부터 다시 해요 |
+| `gh auth login`이 멈춘 것 같아요 | 브라우저 승인을 기다리는 중이에요. https://github.com/login/device 에 화면의 코드를 넣으세요(2-1단계) |
 | 로그에 `중단: 코드 갱신 실패` | 서버에서 파일을 직접 고쳤어요. `cd ~/wyd && git status`로 확인하고, 고친 걸 버려도 되면 `git checkout -- .` 후 다시 실행 |
 | `대기: …` 한 줄 뒤로 아무 로그도 없고 안 바뀜 | 그 커밋의 Actions가 ❌예요. Actions 탭에서 원인을 보고 고쳐서 다시 push |
 | push해도 아무 로그가 없음 | 되돌리기 고정 중일 수 있어요. `ls ~/wyd/.deploy-pin`이 보이면 6단계 3번(`--unpin`) |
@@ -341,3 +410,40 @@ tail -20 ~/wyd-deploy.log
 
 - DB 마이그레이션은 api가 켜질 때 자동으로 적용돼요(기존과 같아요).
 - `docker-compose.yml`, `scripts/backup.sh`, `.env` 외의 서버 파일은 쓰이지 않아요. nginx 설정은 web 이미지 안에 들어 있어요.
+
+---
+
+## 부록. 실제 설정 기록
+
+처음 자동 배포를 켤 때 실제로 한 작업이에요. 나중에 서버를 새로 만들거나 문제가 생기면 참고하세요.
+
+| 항목 | 값 |
+|---|---|
+| 저장소 | https://github.com/misoboy1/wyd-v2 (**공개**) |
+| 이미지 | `ghcr.io/misoboy1/wyd-api`, `ghcr.io/misoboy1/wyd-web` (**공개**, 태그: 커밋 SHA + `latest`) |
+| 서버 `.env` | `IMAGE_REPO=ghcr.io/misoboy1/wyd` |
+| 서버 저장소 주소 | `https://github.com/misoboy1/wyd-v2.git` (공개라 배포 키 없음) |
+| 서버 창고 로그인 | 안 함 (패키지 공개라 토큰 없음) |
+| 자동 확인 | cron, 5분마다 → `~/wyd-deploy.log` |
+
+**2026-09-30 (Mac)**
+
+1. `git remote add origin https://github.com/misoboy1/wyd-v2.git` → `git push -u origin main`
+2. Actions `deploy` 첫 실행 성공(약 2분 30초). check → images(api·web) → promote 모두 ✅
+3. `gh auth login`으로 GitHub 로그인(브라우저 기기 코드 방식)
+4. 실행 로그에서 두 이미지가 커밋 SHA·`latest` 태그로 창고에 들어간 것을 확인
+5. 패키지 `wyd-api`·`wyd-web`을 브라우저에서 **Public**으로 변경(3-1단계)
+6. 로그인 없이 두 이미지의 매니페스트 조회 성공(HTTP 200, Actions 로그와 다이제스트 일치)
+
+**2026-10-01 (서버 SSH 창)**
+
+1. git 설치(4-0단계)
+2. `~/wyd`를 저장소에 https 주소로 연결(4-3단계). 4-1·4-2는 건너뜀
+3. `.env`에 `IMAGE_REPO` 추가(4-4단계)
+4. `auto-deploy.sh` 직접 실행으로 창고 버전으로 교체(4-5단계)
+5. crontab 등록 시 `crontab: command not found` → cron 설치·활성화 후 다시 등록(4-6단계)
+
+**남은 결정**
+
+- 저장소를 비공개로 바꿀지(1단계 안내 참고). 바꾸면 서버에서 4-1과 4-3 주소 변경이 필요해요. 패키지는 이미 공개라 되돌릴 수 없어요.
+- GitHub Actions 경고: `actions/checkout@v4` 등이 Node.js 20 기반이라 곧 지원이 끝나요. 각 action의 새 메이저 버전이 나오면 `.github/workflows/deploy.yml`을 올려 주세요.
