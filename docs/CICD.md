@@ -388,6 +388,7 @@ tail -20 ~/wyd-deploy.log
 | 로그에 `중단: git fetch 실패` | 비공개 저장소면 배포 키 문제예요. `ssh -T git@github.com`으로 확인(4-1단계). 공개 저장소(https 주소)면 인터넷 문제이거나 저장소를 비공개로 바꾼 거예요(4-3단계 마지막 안내) |
 | 로그에 `이미지 확인 실패`인데 패키지는 공개로 바꿨어요 | 패키지 페이지에서 `wyd-api`·`wyd-web` **둘 다** Public인지 확인(3-1단계) |
 | `crontab: command not found` | cron이 설치되지 않았어요. 4-6단계의 cron 설치부터 다시 해요 |
+| 로그 시각이 한국 시간보다 9시간 느려요(오전 11시인데 `02:00`) | 서버 시계가 UTC예요. `sudo timedatectl set-timezone Asia/Seoul && sudo systemctl restart cron` ([DEPLOY-GCP.md 5-1단계](DEPLOY-GCP.md#5-1-서버-시계를-한국-시간으로-맞추기-1분)) |
 | `gh auth login`이 멈춘 것 같아요 | 브라우저 승인을 기다리는 중이에요. https://github.com/login/device 에 화면의 코드를 넣으세요(2-1단계) |
 | 로그에 `중단: 코드 갱신 실패` | 서버에서 파일을 직접 고쳤어요. `cd ~/wyd && git status`로 확인하고, 고친 걸 버려도 되면 `git checkout -- .` 후 다시 실행 |
 | `대기: …` 한 줄 뒤로 아무 로그도 없고 안 바뀜 | 그 커밋의 Actions가 ❌예요. Actions 탭에서 원인을 보고 고쳐서 다시 push |
@@ -442,6 +443,8 @@ tail -20 ~/wyd-deploy.log
 3. `.env`에 `IMAGE_REPO` 추가(4-4단계)
 4. `auto-deploy.sh` 직접 실행으로 창고 버전으로 교체(4-5단계)
 5. crontab 등록 시 `crontab: command not found` → cron 설치·활성화 후 다시 등록(4-6단계)
+6. 문서 수정 커밋 push → 5분 안에 자동 배포 확인: `배포 완료: 2318eb4 → d959e6b`
+7. 로그 시각이 UTC(02:00 = 한국 11:00)로 찍혀서 서버 시간대를 `Asia/Seoul`로 변경 후 cron 재시작(DEPLOY-GCP.md 5-1단계)
 
 **남은 결정**
 
