@@ -2,29 +2,38 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { ExternalLink, RefreshCw } from "lucide-react";
-import { GORI_START, WYD_OPEN, todayKST, type Gori, type WydStatus } from "@wyd/shared";
+import { GORI_START, WYD_OPEN, fmtDate, fmtWeekday, todayKST, type Gori, type WydStatus } from "@wyd/shared";
 import { api } from "@/lib/api";
 import { useCan } from "@/lib/auth";
 import { errorMessage } from "@/lib/data";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/misc";
-import { cn, daysBetween, num } from "@/lib/utils";
+import { cn, daysBetween } from "@/lib/utils";
+import { getLocale, tt, useT } from "@/lib/i18n";
 
-const WD = ["일", "월", "화", "수", "목", "금", "토"];
-/** "2026-07-20" → 요일(한 글자). 시간대 영향 없이 계산 */
-export function weekday(iso: string) {
+/** "2026-07-20" → 요일 번호(0=일요일, 날짜가 아니면 -1). 시간대 영향 없이 계산 */
+export function weekdayIdx(iso: string) {
   const d = new Date(Date.UTC(+iso.slice(0, 4), +iso.slice(5, 7) - 1, +iso.slice(8, 10)));
-  return isNaN(d.getTime()) ? "" : WD[d.getUTCDay()];
+  return isNaN(d.getTime()) ? -1 : d.getUTCDay();
 }
-/** "2026-07-20" → "7/20" */
-export const md = (iso: string) => `${+iso.slice(5, 7)}/${+iso.slice(8, 10)}`;
+/** "2026-07-20" → 현재 언어의 짧은 요일명(월/Mon/lun.) */
+export function weekday(iso: string) {
+  const i = weekdayIdx(iso);
+  return i < 0 ? "" : fmtWeekday(getLocale(), i);
+}
+/** "2026-07-20" → "7/20"(한국어) · 다른 언어는 그 언어의 월/일 순서(20/7 등) */
+export function md(iso: string) {
+  const l = getLocale();
+  if (l === "ko") return `${+iso.slice(5, 7)}/${+iso.slice(8, 10)}`;
+  return fmtDate(l, iso.slice(0, 10), { month: "numeric", day: "numeric" }) || iso;
+}
 /** "2026-07-20" → "7/20 (월)" */
 export const mdw = (iso: string) => `${md(iso)} (${weekday(iso)})`;
 
-/** D-DAY 표기: 남은 날 >0 → D-n, 0 → D-DAY, 지남 → D+n */
+/** D-DAY 표기: 남은 날 >0 → D-n, 0 → D-DAY, 지남 → D+n (언어별 표기, 예: 프랑스어 J-n) */
 export function ddText(targetISO: string, todayISO = todayKST()) {
   const d = daysBetween(todayISO, targetISO);
-  return d > 0 ? "D-" + d : d === 0 ? "D-DAY" : "D+" + -d;
+  return d > 0 ? tt("common.dDay", { n: d }) : d === 0 ? tt("common.dDayToday") : tt("common.dDayPast", { n: -d });
 }
 export const openDday = () => ddText(WYD_OPEN);
 
@@ -58,7 +67,7 @@ export function useWydSync() {
     mutationFn: () => api.post<WydStatus | null>("/wyd-status/sync"),
     onSuccess: (r) => {
       qc.setQueryData(wydKey, r);
-      toast.success(r ? `동기화했습니다 (${r.date})` : "동기화했지만 받은 데이터가 없습니다.");
+      toast.success(r ? tt("gori.rosary.synced", { date: r.date }) : tt("gori.rosary.syncedEmpty"));
     },
     onError: (e) => toast.error(errorMessage(e)),
   });
@@ -70,10 +79,11 @@ export function RosaryCard({ compact, className }: { compact?: boolean; classNam
   const { data: w, isLoading } = useWydStatus();
   const sync = useWydSync();
   const { isAdmin } = useCan();
+  const { t, num } = useT();
   return (
     <div className={cn("flex flex-col rounded-2xl border border-line bg-surface p-4 shadow-soft", className)}>
       <div className="flex items-start justify-between gap-2">
-        <div className="text-[12.5px] font-semibold text-primary">📿 중계양업 묵주기도 봉헌</div>
+        <div className="text-[12.5px] font-semibold text-primary">📿 {t("gori.rosary.title")}</div>
         {isAdmin && (
           <Button
             size="sm"
@@ -81,9 +91,10 @@ export function RosaryCard({ compact, className }: { compact?: boolean; classNam
             className="-mt-1 -mr-1 h-7 px-2 text-[12px]"
             loading={sync.isPending}
             onClick={() => sync.mutate()}
-            aria-label="묵주기도 현황 지금 동기화"
+            aria-label={t("gori.rosary.syncAria")}
           >
-            {!sync.isPending && <RefreshCw />}지금 동기화
+            {!sync.isPending && <RefreshCw />}
+            {t("gori.rosary.syncNow")}
           </Button>
         )}
       </div>
@@ -91,36 +102,36 @@ export function RosaryCard({ compact, className }: { compact?: boolean; classNam
         <Skeleton className="mt-3 h-14" />
       ) : !w ? (
         <div className="mt-2 text-[13px] text-ink-3">
-          아직 데이터 없음
+          {t("gori.rosary.noData")}
           <br />
-          <span className="text-[12px]">매일 아침 자동으로 공식 현황을 가져옵니다.</span>
+          <span className="text-[12px]">{t("gori.rosary.autoHint")}</span>
         </div>
       ) : (
         <>
           {w.churchTotal != null ? (
             <div className="mt-1.5 text-[26px] leading-tight font-bold tracking-tight text-primary tabular">
               {num(w.churchTotal)}
-              <span className="text-[14px] font-semibold"> 단</span>
+              <span className="text-[14px] font-semibold"> {t("gori.rosary.unit")}</span>
             </div>
           ) : (
-            <div className="mt-1.5 py-1 text-[13px] text-ink-3">중계양업 개별 수치는 다음 동기화 때 표시됩니다.</div>
+            <div className="mt-1.5 py-1 text-[13px] text-ink-3">{t("gori.rosary.notYet")}</div>
           )}
           {compact ? (
-            <div className="mt-1 text-[12px] text-ink-3">
-              전체 오늘 {num(w.today ?? 0)}단 · 진행률 {pct(w.progress)}%
-            </div>
+            <div className="mt-1 text-[12px] text-ink-3">{t("gori.rosary.compact", { today: w.today ?? 0, pct: pct(w.progress) })}</div>
           ) : (
             <div className="mt-3 border-t border-line pt-2">
-              <div className="mb-1 text-[11.5px] font-semibold text-ink-3">전체 봉헌 / 목표 10억단</div>
+              <div className="mb-1 text-[11.5px] font-semibold text-ink-3">{t("gori.rosary.totalHeader")}</div>
               <dl className="divide-y divide-line text-[13px]">
-                <Row k="오늘 봉헌" v={`${num(w.today ?? 0)} 단`} />
-                <Row k="누적 봉헌" v={`${num(w.total ?? 0)} 단`} />
-                <Row k="진행률" v={`${pct(w.progress)}%`} />
-                {(w.churches != null || w.orgs != null) && <Row k="참여 본당 · 단체" v={`${num(w.churches)} · ${num(w.orgs)}`} />}
+                <Row k={t("gori.rosary.todayOffer")} v={t("gori.rosary.decades", { n: w.today ?? 0 })} />
+                <Row k={t("gori.rosary.totalOffer")} v={t("gori.rosary.decades", { n: w.total ?? 0 })} />
+                <Row k={t("gori.rosary.progress")} v={`${pct(w.progress)}%`} />
+                {(w.churches != null || w.orgs != null) && (
+                  <Row k={t("gori.rosary.participants")} v={`${num(w.churches)} · ${num(w.orgs)}`} />
+                )}
               </dl>
             </div>
           )}
-          <div className="mt-auto pt-2 text-[11.5px] text-ink-3">갱신: {w.date || "-"}</div>
+          <div className="mt-auto pt-2 text-[11.5px] text-ink-3">{t("gori.rosary.updated", { date: w.date || "-" })}</div>
         </>
       )}
       {!compact && (
@@ -130,7 +141,7 @@ export function RosaryCard({ compact, className }: { compact?: boolean; classNam
           target="_blank"
           rel="noopener noreferrer"
         >
-          공식 현황 페이지
+          {t("gori.rosary.official")}
           <ExternalLink className="size-3" />
         </a>
       )}

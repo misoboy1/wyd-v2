@@ -3,6 +3,7 @@ import type { TableName } from "@wyd/shared";
 import { Button } from "@/components/ui/button";
 import { confirm } from "@/components/ui/confirm";
 import { useRemove } from "@/lib/data";
+import { useT } from "@/lib/i18n";
 
 /** 편집·삭제 버튼(기존 rowActions) */
 export function RowActions({
@@ -16,20 +17,32 @@ export function RowActions({
   label: string;
   onEdit: () => void;
 }) {
+  const { t } = useT();
   const remove = useRemove(table);
   const del = async () => {
     if (
-      !(await confirm({ title: "삭제할까요?", body: `'${label}'을(를) 삭제하면 되돌릴 수 없습니다.`, confirmText: "삭제", danger: true }))
+      !(await confirm({
+        title: t("board.deleteTitle"),
+        body: t("board.deleteBody", { name: label }),
+        confirmText: t("common.delete"),
+        danger: true,
+      }))
     )
       return;
     remove.mutate({ id: row.id, version: row.version });
   };
   return (
     <>
-      <Button size="icon-sm" variant="ghost" aria-label={`${label} 편집`} title="편집" onClick={onEdit}>
+      <Button size="icon-sm" variant="ghost" aria-label={t("board.editAria", { name: label })} title={t("board.edit")} onClick={onEdit}>
         <Pencil />
       </Button>
-      <Button size="icon-sm" variant="danger-ghost" aria-label={`${label} 삭제`} title="삭제" onClick={() => void del()}>
+      <Button
+        size="icon-sm"
+        variant="danger-ghost"
+        aria-label={t("board.deleteAria", { name: label })}
+        title={t("common.delete")}
+        onClick={() => void del()}
+      >
         <Trash2 />
       </Button>
     </>

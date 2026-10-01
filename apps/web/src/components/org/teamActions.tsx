@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { confirm } from "@/components/ui/confirm";
 import { api } from "@/lib/api";
 import { bulkSave, tableKey, toastBulk } from "@/lib/data";
+import { useT } from "@/lib/i18n";
 import { isVirtualVol, type Vol } from "./vol";
 
 /** 봉사자: ① 모든 팀 최소 인원(빈 팀 없게) → ② 전체가 목표 인원 미만이면 최대 인원 이하인 팀에 차례로 배분 */
@@ -71,6 +72,7 @@ export function vgVolunteerPlan(vols: Vol[]) {
 }
 
 export function useTeamActions(vols: Vol[]) {
+  const { t } = useT();
   const qc = useQueryClient();
   const [busy, setBusy] = useState<string | null>(null);
   const mapped = useMemo(() => vols.filter((v) => teamInfo(v).mapped), [vols]);
@@ -79,27 +81,25 @@ export function useTeamActions(vols: Vol[]) {
 
   /** 구 팀명을 조직도 팀명으로 확정 저장. 원래 팀명은 비고에 남김 */
   const normalize = async () => {
-    if (!mapped.length) return toast.info("표준화할 구 팀명이 없습니다.");
+    if (!mapped.length) return toast.info(t("org.act.noMapped"));
     const sum = new Map<string, number>();
     mapped.forEach((v) => {
       const k = `${v.team} → ${teamOf(v)}`;
       sum.set(k, (sum.get(k) ?? 0) + 1);
     });
     const ok = await confirm({
-      title: `구 팀명 ${mapped.length}명을 조직도 팀명으로 바꿔 저장합니다.`,
+      title: t("org.act.normTitle", { n: mapped.length }),
       body: (
         <div className="space-y-2">
           <ul className="list-disc pl-5">
             {[...sum].map(([k, n]) => (
-              <li key={k}>
-                {k} ({n}명)
-              </li>
+              <li key={k}>{t("org.act.normItem", { label: k, n })}</li>
             ))}
           </ul>
-          <p>원래 팀명은 비고에 '구 팀명:'으로 남깁니다. 진행할까요?</p>
+          <p>{t("org.act.normBody")}</p>
         </div>
       ),
-      confirmText: "표준화",
+      confirmText: t("org.act.normConfirm"),
     });
     if (!ok) return;
     setBusy("norm");
@@ -109,30 +109,30 @@ export function useTeamActions(vols: Vol[]) {
       mapped.map((v) => ({ id: v.id, version: v.version, team: teamOf(v), note: (v.note ? v.note + " / " : "") + "구 팀명:" + v.team })),
     );
     setBusy(null);
-    toastBulk("팀명 표준화", res);
+    toastBulk(t("org.act.normToast"), res);
   };
 
   const fill = async () => {
-    if (!plan.length) return toast.info(`봉사자가 이미 ${VIRTUAL.target.volunteers}명 이상이거나 모든 팀이 최대 인원입니다.`);
+    if (!plan.length) return toast.info(t("org.act.fillNone", { target: VIRTUAL.target.volunteers }));
     const ok = await confirm({
-      title: `가상 팀원 ${plan.length}명을 추가할까요?`,
-      body: `이름 '${VIRTUAL.name}', 비고 '${VIRTUAL.volMark}'로 표시됩니다. 팀별 최소 인원을 먼저 채우고 전체 ${VIRTUAL.target.volunteers}명까지 배분합니다. [가상 팀원 지우기]로 한 번에 지울 수 있습니다.`,
+      title: t("org.act.fillTitle", { n: plan.length }),
+      body: t("org.act.fillBody", { name: VIRTUAL.name, mark: VIRTUAL.volMark, target: VIRTUAL.target.volunteers }),
     });
     if (!ok) return;
     setBusy("fill");
     const res = await bulkSave(qc, "volunteers", plan);
     setBusy(null);
-    toastBulk("가상 팀원 채우기", res);
+    toastBulk(t("org.act.fillToast"), res);
   };
 
   const clear = async () => {
-    if (!virtual.length) return toast.info("삭제할 가상 팀원이 없습니다.");
+    if (!virtual.length) return toast.info(t("org.act.clearNone"));
     if (
       !(await confirm({
-        title: "가상 팀원 삭제",
-        body: `비고가 '${VIRTUAL.volMark}'인 가상 봉사자 ${virtual.length}명을 삭제할까요?`,
+        title: t("org.act.clearTitle"),
+        body: t("org.act.clearBody", { mark: VIRTUAL.volMark, n: virtual.length }),
         danger: true,
-        confirmText: "삭제",
+        confirmText: t("common.delete"),
       }))
     )
       return;
@@ -145,8 +145,8 @@ export function useTeamActions(vols: Vol[]) {
     }
     await qc.invalidateQueries({ queryKey: tableKey("volunteers") });
     setBusy(null);
-    if (ng) toast.warning(`${virtual.length - ng}명 삭제, ${ng}명 실패`);
-    else toast.success(`가상 팀원 ${virtual.length}명 삭제 완료`);
+    if (ng) toast.warning(t("org.act.clearPartial", { ok: virtual.length - ng, ng }));
+    else toast.success(t("org.act.clearDone", { n: virtual.length }));
   };
 
   return { mapped, plan, virtual, busy, normalize, fill, clear };
@@ -160,6 +160,7 @@ export function TeamAdminButtons({
   actions: ReturnType<typeof useTeamActions>;
   showNormalize?: boolean;
 }) {
+  const { t } = useT();
   const a = actions;
   return (
     <>
@@ -172,19 +173,19 @@ export function TeamAdminButtons({
           onClick={() => void a.normalize()}
         >
           <Wand2 />
-          팀명 표준화 (구 팀명 {a.mapped.length}명)
+          {t("org.act.normBtn", { n: a.mapped.length })}
         </Button>
       )}
       {a.plan.length > 0 && (
         <Button size="sm" variant="secondary" loading={a.busy === "fill"} onClick={() => void a.fill()}>
           <Sparkles />
-          가상 팀원 채우기 (+{a.plan.length}명 → {VIRTUAL.target.volunteers}명)
+          {t("org.act.fillBtn", { n: a.plan.length, target: VIRTUAL.target.volunteers })}
         </Button>
       )}
       {a.virtual.length > 0 && (
         <Button size="sm" variant="danger-ghost" loading={a.busy === "clear"} onClick={() => void a.clear()}>
           <Trash2 />
-          가상 팀원 지우기 ({a.virtual.length}명)
+          {t("org.act.clearBtn", { n: a.virtual.length })}
         </Button>
       )}
     </>

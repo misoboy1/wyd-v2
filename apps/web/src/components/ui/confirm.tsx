@@ -2,6 +2,7 @@ import { useState, type ReactNode } from "react";
 import { Dialog } from "./dialog";
 import { Button } from "./button";
 import { Input } from "./input";
+import { tt, useT } from "@/lib/i18n";
 
 interface Opts {
   title: ReactNode;
@@ -16,7 +17,7 @@ let push: ((p: Pending) => void) | null = null;
 /** await confirm({...}) → true/false */
 export function confirm(o: Opts): Promise<boolean> {
   return new Promise((resolve) => {
-    if (!push) return resolve(window.confirm(typeof o.title === "string" ? o.title : "계속할까요?"));
+    if (!push) return resolve(window.confirm(typeof o.title === "string" ? o.title : tt("shell.ui.continueQ")));
     push({ ...o, resolve });
   });
 }
@@ -24,6 +25,7 @@ export function confirm(o: Opts): Promise<boolean> {
 export function ConfirmHost() {
   const [p, setP] = useState<Pending | null>(null);
   const [typed, setTyped] = useState("");
+  const { t } = useT();
   push = (x) => {
     setTyped("");
     setP(x);
@@ -42,10 +44,10 @@ export function ConfirmHost() {
       footer={
         <>
           <Button variant="ghost" onClick={() => close(false)}>
-            취소
+            {t("common.cancel")}
           </Button>
           <Button variant={p?.danger ? "danger" : "primary"} disabled={blocked} onClick={() => close(true)}>
-            {p?.confirmText ?? "확인"}
+            {p?.confirmText ?? t("common.confirm")}
           </Button>
         </>
       }
@@ -54,7 +56,17 @@ export function ConfirmHost() {
       {p?.typeToConfirm && (
         <div className="mt-3">
           <p className="mb-1.5 text-[13px] text-ink-3">
-            계속하려면 <b className="text-ink">{p.typeToConfirm}</b> 을(를) 입력하세요.
+            {(() => {
+              // 문장 속 {word} 자리에 굵은 글씨를 끼워 넣는다(언어별 어순 유지)
+              const [a, b = ""] = t("shell.ui.typeToConfirm", { word: "\u0001" }).split("\u0001");
+              return (
+                <>
+                  {a}
+                  <b className="text-ink">{p.typeToConfirm}</b>
+                  {b}
+                </>
+              );
+            })()}
           </p>
           <Input
             data-autofocus

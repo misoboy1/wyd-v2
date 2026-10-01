@@ -12,10 +12,12 @@ import { RowActions } from "@/components/board/RowActions";
 import { useTable } from "@/lib/data";
 import { useCan } from "@/lib/auth";
 import { matchQuery } from "@/lib/utils";
+import { useT } from "@/lib/i18n";
 
 /** 게시판 — 로그인 사용자는 누구나 글쓰기, 수정·삭제는 작성자 본인 또는 관리자 */
 export default function Posts() {
   const { rows, isLoading } = useTable("posts");
+  const { t } = useT();
   const { user, loggedIn, canWrite } = useCan();
   const [q, setQ] = useState("");
   const [mine, setMine] = useState<"all" | "mine">("all");
@@ -32,26 +34,26 @@ export default function Posts() {
     <div className="mx-auto max-w-3xl">
       <PageHeader
         icon={<MessagesSquare />}
-        title="게시판"
-        subtitle="봉사자 자유 게시판 · 작성자 이름을 직접 입력"
+        title={t("board.posts.title")}
+        subtitle={t("board.posts.subtitle")}
         actions={
           loggedIn && (
             <Button variant="primary" onClick={() => setEdit({})}>
               <Plus />
-              글쓰기
+              {t("board.posts.write")}
             </Button>
           )
         }
       />
       <div className="mb-4 flex flex-wrap items-center gap-2">
-        <SearchInput value={q} onChange={setQ} placeholder="검색: 제목·내용·작성자" className="min-w-56 flex-1" />
+        <SearchInput value={q} onChange={setQ} placeholder={t("board.posts.search")} className="min-w-56 flex-1" />
         {loggedIn && (
           <Segmented
             value={mine}
             onChange={setMine}
             options={[
-              { value: "all", label: "전체", count: rows.length },
-              { value: "mine", label: "내 글", count: myCount },
+              { value: "all", label: t("common.all"), count: rows.length },
+              { value: "mine", label: t("board.posts.mine"), count: myCount },
             ]}
           />
         )}
@@ -72,15 +74,15 @@ export default function Posts() {
                 date={p.date}
                 author={p.author}
                 body={p.body}
-                badges={own ? <Badge tone="blue">내 글</Badge> : undefined}
+                badges={own ? <Badge tone="blue">{t("board.posts.mine")}</Badge> : undefined}
                 actions={canWrite("posts", p) && <RowActions table="posts" row={p} label={p.title} onEdit={() => setEdit({ row: p })} />}
               />
             );
           })}
         </div>
       ) : (
-        <Empty icon={<MessagesSquare />} title={q || mine === "mine" ? "조건에 맞는 글이 없습니다." : "등록된 글이 없습니다."}>
-          {loggedIn && !q && "첫 글을 남겨 보세요."}
+        <Empty icon={<MessagesSquare />} title={q || mine === "mine" ? t("board.posts.noMatch") : t("board.posts.empty")}>
+          {loggedIn && !q && t("board.posts.firstPost")}
         </Empty>
       )}
       <EditDialog
@@ -89,8 +91,8 @@ export default function Posts() {
         onOpenChange={(o) => !o && setEdit(null)}
         row={edit?.row}
         defaults={defaults}
-        title={edit?.row ? "글 수정" : "글쓰기"}
-        description={edit?.row ? undefined : "작성한 글은 본인과 관리자만 수정·삭제할 수 있습니다."}
+        title={edit?.row ? t("board.posts.editTitle") : t("board.posts.write")}
+        description={edit?.row ? undefined : t("board.posts.ownHint")}
       />
     </div>
   );

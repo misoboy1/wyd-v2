@@ -2,6 +2,7 @@ import { Fragment, useLayoutEffect, useMemo, useRef, useState, type ReactNode } 
 import { useWindowVirtualizer } from "@tanstack/react-virtual";
 import { ArrowDown, ArrowUp, ArrowUpDown } from "lucide-react";
 import { cn, cmp } from "@/lib/utils";
+import { useT } from "@/lib/i18n";
 
 export interface Column<T> {
   key: string;
@@ -45,6 +46,7 @@ export function DataTable<T>({
   className?: string;
   dense?: boolean;
 }) {
+  const { t } = useT();
   const [sort, setSort] = useState(initialSort ?? null);
   const sorted = useMemo(() => {
     if (!sort) return rows;
@@ -159,7 +161,7 @@ export function DataTable<T>({
           {padBottom > 0 && <tr aria-hidden style={{ height: padBottom }} />}
         </tbody>
       </table>
-      {!sorted.length && (empty ?? <div className="py-12 text-center text-[13.5px] text-ink-3">표시할 항목이 없습니다.</div>)}
+      {!sorted.length && (empty ?? <div className="py-12 text-center text-[13.5px] text-ink-3">{t("shell.ui.tableEmpty")}</div>)}
     </div>
   );
 }

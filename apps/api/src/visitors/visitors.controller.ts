@@ -5,6 +5,8 @@ import { TablesService } from "../tables/tables.service.js";
 import { RequireLogin, CurrentUser } from "../auth/roles.decorator.js";
 import type { AuthUser } from "../common/auth-user.js";
 import { Invalid } from "../common/errors.js";
+import { Lang } from "../common/i18n.js";
+import type { Locale } from "@wyd/shared";
 import { facilities, visitors } from "../db/schema.js";
 import { EventsService } from "../events/events.service.js";
 
@@ -34,10 +36,10 @@ export class VisitorsController {
   /** 배정 일괄 적용(자동 배정·수동 일괄). 행마다 서버가 정원·성별·혼숙·기간을 재검사하고 결과를 돌려줌 */
   @Post("assign")
   @HttpCode(200)
-  async assign(@Body() body: unknown, @CurrentUser() user: AuthUser) {
+  async assign(@Body() body: unknown, @CurrentUser() user: AuthUser, @Lang() locale: Locale) {
     const p = assignSchema.safeParse(body);
-    if (!p.success) throw Invalid("배정 요청 형식 오류");
-    return { results: await this.svc.bulk("visitors", p.data.changes, user) };
+    if (!p.success) throw Invalid("err.assignFormat");
+    return { results: await this.svc.bulk("visitors", p.data.changes, user, locale) };
   }
 
   /** 배정 일괄 해제 — 연결 끊김만 / 미확정 / 홈스테이 전체 / 교리실 전체 / 전체 */
@@ -45,7 +47,7 @@ export class VisitorsController {
   @HttpCode(200)
   async unassign(@Body() body: unknown, @CurrentUser() user: AuthUser) {
     const p = unassignSchema.safeParse(body);
-    if (!p.success) throw Invalid("scope 확인");
+    if (!p.success) throw Invalid("err.scopeInvalid");
     const assigned = or(isNotNull(visitors.facilityId), isNotNull(visitors.homestayId), ne(visitors.orphanStay, ""));
     const sleepRooms = sql`(select id from ${facilities} where ${facilities.type} like '%숙박%')`;
     const where = {

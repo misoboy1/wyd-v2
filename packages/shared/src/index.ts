@@ -3,3 +3,4 @@ export * from "./content.js";
 export * from "./rules.js";
 export * from "./schemas.js";
 export * from "./text.js";
+export * from "./i18n/index.js";

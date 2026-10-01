@@ -1,13 +1,15 @@
 import { useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { ClipboardPaste, AlertTriangle } from "lucide-react";
-import { schemas, type TableName } from "@wyd/shared";
+import { issueMsg, schemas, translateDynamic, type TableName } from "@wyd/shared";
 import { Dialog } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { parsePaste } from "@/lib/csv";
 import { bulkSave, toastBulk } from "@/lib/data";
+import { useT } from "@/lib/i18n";
+import { fieldLabel } from "./RecordForm";
 
 export interface PasteDef {
   label: string;
@@ -23,14 +25,16 @@ export function PasteImport({ def, open, onOpenChange }: { def: PasteDef; open: 
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState("");
+  const { t, td } = useT();
   const parsed = useMemo(() => {
     const rows = parsePaste(text);
     if (!rows.length) return [];
-    // 첫 행이 머리글이면 건너뜀(열 이름과 절반 이상 일치)
-    const heads = def.cols.map((c) => c[1].replace(/\(.*\)/, ""));
+    // 첫 행이 머리글이면 건너뜀(열 이름과 절반 이상 일치). 화면 언어와 다른 언어(특히 한국어) 머리글도 인식
+    const tdKo = (k: string) => translateDynamic("ko", k);
+    const heads = def.cols.flatMap(([k, h]) => [h, fieldLabel(tdKo, def.table, k)].map((x) => x.replace(/\(.*\)/, "").trim()));
     const first = rows[0],
       hit = first.filter((c) => heads.some((h) => h && c.includes(h))).length;
-    const data = hit >= Math.ceil(Math.min(first.length, heads.length) / 2) ? rows.slice(1) : rows;
+    const data = hit >= Math.ceil(Math.min(first.length, def.cols.length) / 2) ? rows.slice(1) : rows;
     return data.map((r) => {
       const o: Record<string, string> = {};
       def.cols.forEach(([k], i) => {
@@ -42,10 +46,18 @@ export function PasteImport({ def, open, onOpenChange }: { def: PasteDef; open: 
       return {
         raw: r,
         value: z.success ? z.data : null,
-        error: z.success ? "" : z.error.issues.map((i: any) => `${i.path.join(".")}: ${i.message}`).join(", "),
+        error: z.success
+          ? ""
+          : z.error.issues
+              .map((i: any) => {
+                const m = issueMsg(i),
+                  msg = td(m.key, m.params);
+                return i.path.length ? `${fieldLabel(td, def.table, String(i.path[0]))}: ${msg}` : msg;
+              })
+              .join(", "),
       };
     });
-  }, [text, def]);
+  }, [text, def, td]);
   const good = parsed.filter((p) => p.value);
   const commit = async () => {
     setBusy(true);
@@ -55,7 +67,7 @@ export function PasteImport({ def, open, onOpenChange }: { def: PasteDef; open: 
       good.map((p) => p.value),
       (a, b) => setProgress(`${a}/${b}`),
     );
-    toastBulk(`${def.label} 붙여넣기`, res);
+    toastBulk(t("shell.paste.toast", { label: def.label }), res);
     setBusy(false);
     setProgress("");
     setText("");
@@ -69,26 +81,25 @@ export function PasteImport({ def, open, onOpenChange }: { def: PasteDef; open: 
       title={
         <span className="inline-flex items-center gap-2">
           <ClipboardPaste className="size-4.5" />
-          {def.label} 엑셀 붙여넣기
+          {t("shell.paste.title", { label: def.label })}
         </span>
       }
       description={
         <>
-          엑셀에서 아래 열 순서대로 복사해 붙여넣으세요(머리글 행은 자동 제외). 열 순서:{" "}
-          <b className="text-ink-2">{def.cols.map((c) => c[1]).join(" · ")}</b>
+          {t("shell.paste.desc")} <b className="text-ink-2">{def.cols.map((c) => c[1]).join(" · ")}</b>
         </>
       }
       footer={
         <>
           <span className="mr-auto text-[13px] text-ink-3">
-            {parsed.length ? `${parsed.length}행 중 ${good.length}행 저장 가능` : ""}
-            {progress && ` · 저장 중 ${progress}`}
+            {parsed.length ? t("shell.paste.status", { total: parsed.length, ok: good.length }) : ""}
+            {progress && ` · ${t("shell.paste.progress", { p: progress })}`}
           </span>
           <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={busy}>
-            취소
+            {t("common.cancel")}
           </Button>
           <Button variant="primary" loading={busy} disabled={!good.length} onClick={() => void commit()}>
-            {good.length}행 추가
+            {t("shell.paste.addRows", { n: good.length })}
           </Button>
         </>
       }
@@ -97,7 +108,7 @@ export function PasteImport({ def, open, onOpenChange }: { def: PasteDef; open: 
         data-autofocus
         value={text}
         onChange={(e) => setText(e.target.value)}
-        placeholder="여기에 붙여넣기 (Ctrl/⌘+V)"
+        placeholder={t("shell.paste.placeholder")}
         className="min-h-32 font-mono text-[12.5px]"
       />
       {parsed.length > 0 && (
@@ -111,7 +122,7 @@ export function PasteImport({ def, open, onOpenChange }: { def: PasteDef; open: 
                     {c[1]}
                   </th>
                 ))}
-                <th className="px-2 py-1.5 text-left text-ink-3">확인</th>
+                <th className="px-2 py-1.5 text-left text-ink-3">{t("shell.paste.check")}</th>
               </tr>
             </thead>
             <tbody>

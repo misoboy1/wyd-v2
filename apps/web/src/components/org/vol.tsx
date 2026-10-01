@@ -19,6 +19,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Tip } from "@/components/ui/menu";
 import { useTable } from "@/lib/data";
+import { useT, type T } from "@/lib/i18n";
 import { isBrokenTel, telHref } from "@/lib/utils";
 
 export type Vol = Volunteer;
@@ -49,6 +50,8 @@ export function defaultTask(team: string): string {
   if (w) return String(w.task).split(/[,，]/)[0].trim();
   return (TEAM_TASK_DEFAULT as Record<string, string>)[team] ?? "";
 }
+/** 팀 이름 표시 — 팀 미배정(내부 값)만 번역 */
+export const teamName = (t: T, team: string) => (team === NO_TEAM ? t("org.noTeam") : team);
 /** 표시할 팀 목록: 조직도 팀 + (있으면) 팀 미배정 */
 export const teamList = (byTeam: Record<string, Vol[]>): string[] => TEAM_NAMES.concat(byTeam[NO_TEAM] ? [NO_TEAM] : []);
 
@@ -65,28 +68,30 @@ export const volRefText = (v: Vol, deptName: string) => [deptName, v.org && v.or
 
 // ── 표시 조각 ─────────────────────────────────────────────
 export function TeamBadge({ v }: { v: Vol }) {
+  const { t } = useT();
   const ti = teamInfo(v);
   if (ti.team === NO_TEAM)
     return (
       <span className="inline-flex flex-wrap items-center gap-1">
-        <Badge tone="red">{NO_TEAM}</Badge>
-        {ti.unknown && <span className="text-[11.5px] text-ink-3">(입력: {ti.raw})</span>}
+        <Badge tone="red">{t("org.noTeam")}</Badge>
+        {ti.unknown && <span className="text-[11.5px] text-ink-3">{t("org.vol.inputRaw", { raw: ti.raw })}</span>}
       </span>
     );
   return (
     <span className="inline-flex flex-wrap items-center gap-1">
       <Badge tone="blue">{ti.team}</Badge>
       {ti.mapped && (
-        <Tip content="구 팀명에서 추정한 팀입니다. [팀명 표준화]로 확정하세요.">
-          <span className="cursor-help text-[11.5px] text-warn">추정(구: {ti.raw})</span>
+        <Tip content={t("org.vol.guessedTip")}>
+          <span className="cursor-help text-[11.5px] text-warn">{t("org.vol.guessed", { raw: ti.raw })}</span>
         </Tip>
       )}
     </span>
   );
 }
-export const RoleBadge = ({ role }: { role: string }) => (
-  <Badge tone={roleColor(role) === "amber" ? "amber" : "gray"}>{role || "팀원"}</Badge>
-);
+export function RoleBadge({ role }: { role: string }) {
+  const { label } = useT();
+  return <Badge tone={roleColor(role) === "amber" ? "amber" : "gray"}>{label("volRole", role || "팀원")}</Badge>;
+}
 export function LangBadge({ langs }: { langs: string }) {
   const s = showLangs(langs);
   return s ? (
@@ -118,19 +123,20 @@ export function RefChips({ v, deptName }: { v: Vol; deptName: string }) {
   );
 }
 export function Tel({ tel }: { tel: string }) {
+  const { t } = useT();
   if (!tel) return <span className="text-ink-3">—</span>;
   if (tel.includes("••••"))
     return (
-      <Tip content="공개 화면에서는 연락처를 가립니다.">
+      <Tip content={t("org.vol.telMasked")}>
         <span className="text-ink-3">{tel}</span>
       </Tip>
     );
   if (isBrokenTel(tel))
     return (
-      <Tip content="시트에서 +로 시작하는 번호가 수식으로 인식되어 깨졌습니다. 편집에서 다시 입력하세요.">
+      <Tip content={t("org.vol.telBrokenTip")}>
         <span className="inline-flex items-center gap-1 text-[12px] text-bad">
           <AlertTriangle className="size-3.5" />
-          연락처 오류(재입력)
+          {t("org.vol.telBroken")}
         </span>
       </Tip>
     );

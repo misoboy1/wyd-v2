@@ -8,6 +8,7 @@ import { Dialog } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Field, Input, Textarea } from "@/components/ui/input";
 import { confirm } from "@/components/ui/confirm";
+import { tt, useT } from "@/lib/i18n";
 
 type SlotIn = Omit<ScheduleSlot, "id"> & { id?: number };
 
@@ -29,7 +30,7 @@ export function useSaveSlots() {
 }
 
 export async function deleteSlot(saveSlots: ReturnType<typeof useSaveSlots>, day: ScheduleDay, index: number) {
-  if (!(await confirm({ title: "이 시간대 항목을 삭제할까요?", confirmText: "삭제", danger: true }))) return false;
+  if (!(await confirm({ title: tt("dash.schedule.confirmDelSlot"), confirmText: tt("common.delete"), danger: true }))) return false;
   const list = orderedSlots(day);
   list.splice(index, 1);
   try {
@@ -53,6 +54,7 @@ export function SlotDialog({
   onOpenChange: (v: boolean) => void;
 }) {
   const saveSlots = useSaveSlots();
+  const { t } = useT();
   const [v, setV] = useState({ time: "", text: "", who: "" });
   const [orig, setOrig] = useState<SlotIn | null>(null);
   useEffect(() => {
@@ -72,7 +74,7 @@ export function SlotDialog({
       ? list.findIndex((s) => (orig.id != null ? s.id === orig.id : s.time === orig.time && s.text === orig.text && s.who === orig.who))
       : -1;
     if (orig && at < 0) {
-      toast.error("편집하던 항목이 이미 삭제되었습니다.");
+      toast.error(t("dash.schedule.slotGone"));
       onOpenChange(false);
       return;
     }
@@ -94,21 +96,21 @@ export function SlotDialog({
       open={open}
       onOpenChange={(o) => !saveSlots.isPending && onOpenChange(o)}
       size="sm"
-      title={`${index != null ? "시간대 편집" : "시간대 추가"} · ${day.date}`}
+      title={t(index != null ? "dash.schedule.editSlot" : "dash.schedule.newSlot", { date: day.date })}
       description={day.event}
       footer={
         <>
           {index != null && (
             <Button variant="danger-ghost" className="mr-auto" onClick={() => void del()}>
               <Trash2 />
-              삭제
+              {t("common.delete")}
             </Button>
           )}
           <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={saveSlots.isPending}>
-            취소
+            {t("common.cancel")}
           </Button>
           <Button variant="primary" loading={saveSlots.isPending} onClick={() => void submit()}>
-            저장
+            {t("common.save")}
           </Button>
         </>
       }
@@ -120,23 +122,23 @@ export function SlotDialog({
           void submit();
         }}
       >
-        <Field label="시간">
+        <Field label={t("dash.schedule.colTime")}>
           <Input
             data-autofocus
             value={v.time}
             maxLength={30}
-            placeholder="예: 08:00 / 오전 / 상시"
+            placeholder={t("dash.schedule.timePh")}
             onChange={(e) => setV({ ...v, time: e.target.value })}
           />
         </Field>
-        <Field label="내용">
+        <Field label={t("dash.schedule.colText")}>
           <Textarea value={v.text} maxLength={500} onChange={(e) => setV({ ...v, text: e.target.value })} />
         </Field>
-        <Field label="담당">
+        <Field label={t("dash.schedule.colWho")}>
           <Input
             value={v.who}
             maxLength={100}
-            placeholder="예: 시설분과 / 안내(WYD)"
+            placeholder={t("dash.schedule.whoPh")}
             onChange={(e) => setV({ ...v, who: e.target.value })}
           />
         </Field>

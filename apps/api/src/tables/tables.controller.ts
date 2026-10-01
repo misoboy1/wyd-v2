@@ -1,12 +1,13 @@
 import { Body, Controller, Delete, Get, HttpCode, Param, ParseIntPipe, Patch, Post, Query } from "@nestjs/common";
-import { TABLE_NAMES, type TableName } from "@wyd/shared";
+import { TABLE_NAMES, type Locale, type TableName } from "@wyd/shared";
 import { TablesService, isTable } from "./tables.service.js";
 import { CurrentUser, RequireLogin } from "../auth/roles.decorator.js";
 import type { AuthUser } from "../common/auth-user.js";
 import { NotFound } from "../common/errors.js";
+import { Lang } from "../common/i18n.js";
 
 function tableOf(name: string): TableName {
-  if (!isTable(name)) throw NotFound("표");
+  if (!isTable(name)) throw NotFound("err.what.table");
   return name;
 }
 
@@ -35,8 +36,13 @@ export class TablesController {
   @Post("t/:table/bulk")
   @HttpCode(200)
   @RequireLogin()
-  async bulk(@Param("table") t: string, @Body() body: { rows?: Record<string, unknown>[] }, @CurrentUser() user: AuthUser) {
-    return { results: await this.svc.bulk(tableOf(t), body?.rows ?? [], user) };
+  async bulk(
+    @Param("table") t: string,
+    @Body() body: { rows?: Record<string, unknown>[] },
+    @CurrentUser() user: AuthUser,
+    @Lang() locale: Locale,
+  ) {
+    return { results: await this.svc.bulk(tableOf(t), body?.rows ?? [], user, locale) };
   }
 
   @Patch("t/:table/:id")

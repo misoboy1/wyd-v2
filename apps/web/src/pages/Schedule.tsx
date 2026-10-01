@@ -5,6 +5,7 @@ import { todayKST, type ScheduleDay } from "@wyd/shared";
 import { useTable } from "@/lib/data";
 import { useCan } from "@/lib/auth";
 import { cn } from "@/lib/utils";
+import { useT } from "@/lib/i18n";
 import { Empty, PageHeader, Skeleton } from "@/components/ui/misc";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -22,6 +23,8 @@ function isToday(date: string, today = todayKST()) {
 
 function DayCard({ s, on, onPick }: { s: ScheduleDay; on: boolean; onPick: () => void }) {
   const today = isToday(s.date);
+  const { t } = useT();
+  const n = (s.slots ?? []).length;
   return (
     <button
       type="button"
@@ -36,12 +39,12 @@ function DayCard({ s, on, onPick }: { s: ScheduleDay; on: boolean; onPick: () =>
     >
       <div className="flex items-center gap-1.5">
         <span className="text-[15px] font-bold text-primary tabular">{s.date}</span>
-        {today && <Badge tone="gold">오늘</Badge>}
+        {today && <Badge tone="gold">{t("dash.schedule.today")}</Badge>}
       </div>
       <div className="mt-1.5 line-clamp-2 min-h-9 text-[13px] leading-snug text-ink">{stripTag(s.event)}</div>
       <div className="mt-2 text-[11.5px] text-ink-3">
-        {(s.slots ?? []).length ? `시간대 ${(s.slots ?? []).length}개` : "시간대 없음"}
-        {on && <span className="font-semibold text-primary"> · 상세 보기 중</span>}
+        {n ? t("dash.schedule.slotCount", { n }) : t("dash.schedule.noSlots")}
+        {on && <span className="font-semibold text-primary">{t("dash.schedule.viewing")}</span>}
       </div>
     </button>
   );
@@ -80,6 +83,7 @@ function Section({
 export default function Schedule() {
   const { rows, isLoading } = useTable("schedule");
   const { canWrite } = useCan();
+  const { t } = useT();
   const editable = canWrite("schedule");
   const saveSlots = useSaveSlots();
   const [picked, setPicked] = useState<number | null>(null);
@@ -98,13 +102,13 @@ export default function Schedule() {
     <div>
       <PageHeader
         icon={<CalendarDays />}
-        title="일정표"
-        subtitle="교구대회(7/29~8/2) + 본대회(8/3~8/8) · 날짜를 누르면 그날 상세가 아래에 표시됩니다"
+        title={t("nav.schedule")}
+        subtitle={t("dash.schedule.subtitle")}
         actions={
           editable && (
             <Button variant="primary" onClick={() => setDayEdit({ row: null })}>
               <Plus />
-              날짜 추가
+              {t("dash.schedule.addDay")}
             </Button>
           )
         }
@@ -118,15 +122,15 @@ export default function Schedule() {
         </div>
       ) : !sched.length ? (
         <Card>
-          <Empty icon={<CalendarDays />} title="등록된 일정이 없습니다.">
-            {editable && "‘날짜 추가’로 일정을 추가하세요."}
+          <Empty icon={<CalendarDays />} title={t("dash.schedule.empty")}>
+            {editable && t("dash.schedule.emptyHint")}
           </Empty>
         </Card>
       ) : (
         <>
-          <Section title="교구대회 (Days in the Dioceses)" sub="7/29~8/2" days={sched.filter(isDiocese)} cur={day?.id} onPick={setPicked} />
+          <Section title={t("dash.schedule.diocese")} sub="7/29~8/2" days={sched.filter(isDiocese)} cur={day?.id} onPick={setPicked} />
           <Section
-            title="본대회 (World Youth Day)"
+            title={t("dash.schedule.main")}
             sub="8/3~8/8"
             days={sched.filter((s) => !isDiocese(s))}
             cur={day?.id}
@@ -144,7 +148,7 @@ export default function Schedule() {
                     <div className="mt-2 flex gap-2 text-[13.5px] leading-relaxed text-ink-2">
                       <ClipboardList className="mt-0.5 size-4 shrink-0 text-ink-3" />
                       <div>
-                        <span className="font-medium text-ink">준비사항</span>{" "}
+                        <span className="font-medium text-ink">{t("dash.schedule.prepLabel")}</span>{" "}
                         <span className="whitespace-pre-wrap">{day.prep || "—"}</span>
                       </div>
                     </div>
@@ -152,7 +156,7 @@ export default function Schedule() {
                   {canDay && (
                     <Button size="sm" onClick={() => setDayEdit({ row: day })}>
                       <Pencil />
-                      날짜·준비사항 편집
+                      {t("dash.schedule.editDay")}
                     </Button>
                   )}
                 </div>
@@ -160,33 +164,33 @@ export default function Schedule() {
 
               <div className="border-t border-line">
                 <div className="flex items-center justify-between px-5 pt-3 pb-2">
-                  <h3 className="text-[14px] font-semibold text-ink">시간대별 항목</h3>
+                  <h3 className="text-[14px] font-semibold text-ink">{t("dash.schedule.slotsTitle")}</h3>
                   {canDay && (
                     <Button size="sm" variant="soft" onClick={() => setSlotEdit({ index: null })}>
                       <Plus />
-                      시간대 항목 추가
+                      {t("dash.schedule.addSlot")}
                     </Button>
                   )}
                 </div>
                 {!slots.length ? (
-                  <div className="px-5 pb-5 text-[13.5px] text-ink-3">등록된 시간대 항목이 없습니다.</div>
+                  <div className="px-5 pb-5 text-[13.5px] text-ink-3">{t("dash.schedule.noSlotItems")}</div>
                 ) : (
                   <div className="overflow-x-auto">
                     <table className="w-full text-[13.5px]">
                       <thead>
                         <tr className="text-left text-[12.5px] text-ink-3">
                           <th scope="col" className="border-b border-line bg-surface-2 px-5 py-2 font-semibold">
-                            시간
+                            {t("dash.schedule.colTime")}
                           </th>
                           <th scope="col" className="border-b border-line bg-surface-2 px-3 py-2 font-semibold">
-                            내용
+                            {t("dash.schedule.colText")}
                           </th>
                           <th scope="col" className="border-b border-line bg-surface-2 px-3 py-2 font-semibold">
-                            담당
+                            {t("dash.schedule.colWho")}
                           </th>
                           {canDay && (
                             <th scope="col" className="border-b border-line bg-surface-2 px-3 py-2">
-                              <span className="sr-only">관리</span>
+                              <span className="sr-only">{t("dash.schedule.colManage")}</span>
                             </th>
                           )}
                         </tr>
@@ -206,7 +210,7 @@ export default function Schedule() {
                                 <Button
                                   size="icon-sm"
                                   variant="ghost"
-                                  aria-label={`${sl.time} 항목 편집`}
+                                  aria-label={t("dash.schedule.editSlotAria", { time: sl.time })}
                                   onClick={() => setSlotEdit({ index: i })}
                                 >
                                   <Pencil />
@@ -214,7 +218,7 @@ export default function Schedule() {
                                 <Button
                                   size="icon-sm"
                                   variant="danger-ghost"
-                                  aria-label={`${sl.time} 항목 삭제`}
+                                  aria-label={t("dash.schedule.delSlotAria", { time: sl.time })}
                                   disabled={saveSlots.isPending}
                                   onClick={() => void deleteSlot(saveSlots, day, i)}
                                 >
@@ -241,9 +245,9 @@ export default function Schedule() {
         row={dayEdit?.row ?? null}
         defaults={defaults}
         size="md"
-        title={dayEdit?.row ? `일정 편집 · ${dayEdit.row.date}` : "날짜 추가"}
-        description="날짜 예: 7/29 (목) · 행사 이름에 [교구대회]를 넣으면 교구대회 칸에 표시됩니다."
-        deleteLabel="이 날짜와 시간대 항목을 모두 삭제합니다."
+        title={dayEdit?.row ? t("dash.schedule.dayEditTitle", { date: dayEdit.row.date }) : t("dash.schedule.addDay")}
+        description={t("dash.schedule.dayDesc")}
+        deleteLabel={t("dash.schedule.dayDelete")}
         onSaved={(r) => setPicked(r.id)}
       />
       <SlotDialog day={day ?? null} index={slotEdit?.index ?? null} open={!!slotEdit} onOpenChange={(o) => !o && setSlotEdit(null)} />

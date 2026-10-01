@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Trash2 } from "lucide-react";
-import type { TableName } from "@wyd/shared";
+import type { Params, TableName } from "@wyd/shared";
 import { Dialog } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { confirm } from "@/components/ui/confirm";
@@ -8,6 +8,7 @@ import { RecordForm, schemaFields, type FieldDef } from "./RecordForm";
 import { useRemove, useSave } from "@/lib/data";
 import { useCan } from "@/lib/auth";
 import { ApiError } from "@/lib/api";
+import { useT } from "@/lib/i18n";
 
 type Values = Record<string, any>;
 
@@ -52,6 +53,7 @@ export function EditDialog({
   const save = useSave(table);
   const remove = useRemove(table);
   const { canWrite } = useCan();
+  const { t, td } = useT();
   const [values, setValues] = useState<Values>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
   // 창을 열 때(또는 다른 행으로 바뀔 때)만 초기화 — 열려 있는 동안 실시간 갱신(SSE)으로 입력값이 지워지지 않게
@@ -76,7 +78,9 @@ export function EditDialog({
     } catch (e) {
       if (e instanceof ApiError && e.code === "VALIDATION" && Array.isArray(e.detail)) {
         const m: Record<string, string> = {};
-        e.detail.forEach((i: { path: string; message: string }) => (m[i.path] = i.message));
+        e.detail.forEach(
+          (i: { path: string; message: string; key?: string; params?: Params }) => (m[i.path] = td(i.key ?? i.message, i.params)),
+        );
         setErrors(m);
       }
       if (e instanceof ApiError && e.code === "CONFLICT") onOpenChange(false);
@@ -84,7 +88,14 @@ export function EditDialog({
   };
   const del = async () => {
     if (!row) return;
-    if (!(await confirm({ title: "삭제할까요?", body: deleteLabel ?? "삭제하면 되돌릴 수 없습니다.", confirmText: "삭제", danger: true })))
+    if (
+      !(await confirm({
+        title: t("shell.form.deleteQ"),
+        body: deleteLabel ?? t("shell.form.deleteBody"),
+        confirmText: t("common.delete"),
+        danger: true,
+      }))
+    )
       return;
     remove.mutate({ id: row.id, version: row.version });
     onOpenChange(false);
@@ -95,23 +106,23 @@ export function EditDialog({
       open={open}
       onOpenChange={(o) => !save.isPending && onOpenChange(o)}
       size={size}
-      title={title ?? (row ? "수정" : "추가")}
+      title={title ?? t(row ? "common.edit" : "common.add")}
       description={description}
       footer={
         <>
           {row && editable && (
             <Button variant="danger-ghost" className="mr-auto" onClick={() => void del()}>
               <Trash2 />
-              삭제
+              {t("common.delete")}
             </Button>
           )}
           {footerExtra}
           <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={save.isPending}>
-            취소
+            {t("common.cancel")}
           </Button>
           {editable && (
             <Button variant="primary" loading={save.isPending} onClick={() => void submit()}>
-              저장
+              {t("common.save")}
             </Button>
           )}
         </>
@@ -119,7 +130,14 @@ export function EditDialog({
     >
       {children}
       <fieldset disabled={!editable || save.isPending} className="contents">
-        <RecordForm fields={f} values={values} onChange={(k, v) => setValues((s) => ({ ...s, [k]: v }))} custom={custom} errors={errors} />
+        <RecordForm
+          table={table}
+          fields={f}
+          values={values}
+          onChange={(k, v) => setValues((s) => ({ ...s, [k]: v }))}
+          custom={custom}
+          errors={errors}
+        />
       </fieldset>
     </Dialog>
   );

@@ -5,13 +5,14 @@ import { GORI_START, todayKST, type Gori } from "@wyd/shared";
 import { useTable } from "@/lib/data";
 import { useCan } from "@/lib/auth";
 import { cn } from "@/lib/utils";
+import { useT } from "@/lib/i18n";
 import { PageHeader, Skeleton } from "@/components/ui/misc";
 import { Card, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { DataTable, type Column } from "@/components/ui/table";
 import { EditDialog } from "@/components/form/EditDialog";
-import { goriDayPlus, md, mdw, RosaryCard, sortGori, weekday } from "@/components/gori/common";
+import { goriDayPlus, md, mdw, RosaryCard, sortGori, weekdayIdx } from "@/components/gori/common";
 import { GoriGuide, GoriRite } from "@/components/gori/RiteSection";
 import { GoriPhotoCell } from "@/components/gori/PhotoCell";
 
@@ -23,33 +24,39 @@ function nextDate(iso?: string) {
 }
 
 function TodayCard({ today, todayIso }: { today?: Gori; todayIso: string }) {
+  const { t } = useT();
   if (!today)
     return (
       <div className="flex items-center rounded-2xl border border-line bg-surface-2 p-4 text-[13.5px] text-ink-3">
-        오늘({todayIso}) 배정된 고리기도가 없습니다.
+        {t("gori.todayNone", { date: todayIso })}
       </div>
     );
+  const sub = t("gori.todaySub");
   return (
     <div className="flex flex-col justify-center rounded-2xl border border-primary/40 bg-primary-soft p-4">
-      <div className="text-[12.5px] font-semibold text-primary">🙏 오늘의 고리기도 · Today</div>
+      <div className="text-[12.5px] font-semibold text-primary">
+        🙏 {t("gori.todayTitle")}
+        {sub && ` · ${sub}`}
+      </div>
       <div className="mt-1 text-[20px] font-bold text-ink">{today.org}</div>
-      <div className="mt-0.5 text-[14px] text-ink-2">대표: {today.rep || "—"}</div>
+      <div className="mt-0.5 text-[14px] text-ink-2">{t("gori.rep", { name: today.rep || "—" })}</div>
       {today.note && <div className="mt-1 text-[12.5px] text-ink-3">{today.note}</div>}
     </div>
   );
 }
 function DPlusCard({ n }: { n: number | null }) {
+  const { t } = useT();
   if (n == null)
     return (
       <div className="flex items-center justify-center rounded-2xl border border-line bg-surface-2 p-4 text-[13.5px] text-ink-3">
-        기간 외
+        {t("gori.outOfRange")}
       </div>
     );
   return (
     <div className="flex flex-col items-center justify-center rounded-2xl bg-primary p-4 text-primary-ink">
-      <div className="text-[11.5px] font-semibold opacity-85">고리기도</div>
-      <div className="mt-0.5 text-[40px] leading-none font-bold tabular">D+{n}</div>
-      <div className="mt-1.5 text-[11px] opacity-80">{md(GORI_START)} 시작</div>
+      <div className="text-[11.5px] font-semibold opacity-85">{t("gori.dPlusLabel")}</div>
+      <div className="mt-0.5 text-[40px] leading-none font-bold tabular">{t("common.dDayPast", { n })}</div>
+      <div className="mt-1.5 text-[11px] opacity-80">{t("gori.startsOn", { date: md(GORI_START) })}</div>
     </div>
   );
 }
@@ -57,6 +64,7 @@ function DPlusCard({ n }: { n: number | null }) {
 export default function GoriPage() {
   const { rows, isLoading } = useTable("gori");
   const { canWrite } = useCan();
+  const { t, weekday: wdName } = useT();
   const editable = canWrite("gori");
   const [edit, setEdit] = useState<{ row: Gori | null } | null>(null);
   const todayIso = todayKST();
@@ -68,39 +76,43 @@ export default function GoriPage() {
   // defaults는 매 렌더 새 객체면 편집 창 입력값이 초기화됨 → 고정
   const defaults = useMemo(() => ({ date: nextDate(lastDate), org: "", rep: "", note: "", photo: "" }), [lastDate]);
 
+  const titleSub = t("gori.titleSub"),
+    upSub = t("gori.upcomingSub"),
+    fullSub = t("gori.fullSub");
+
   const columns: Column<Gori>[] = [
     {
       key: "date",
-      header: "날짜",
+      header: t("gori.col.date"),
       sortValue: (g) => g.date,
       className: "whitespace-nowrap font-medium tabular",
       cell: (g) => (
         <span className="inline-flex items-center gap-1.5">
           {md(g.date)}
-          {g.date === todayIso && <Badge tone="blue">오늘</Badge>}
+          {g.date === todayIso && <Badge tone="blue">{t("gori.today")}</Badge>}
         </span>
       ),
     },
     {
       key: "wd",
-      header: "요일",
+      header: t("gori.col.wd"),
       cell: (g) => {
-        const w = weekday(g.date);
-        return <span className={cn(w === "일" && "text-bad", w === "토" && "text-primary")}>{w}</span>;
+        const w = weekdayIdx(g.date); // 0=일요일, 6=토요일
+        return <span className={cn(w === 0 && "text-bad", w === 6 && "text-primary")}>{w < 0 ? "" : wdName(w)}</span>;
       },
     },
-    { key: "org", header: "담당 단체", sortValue: (g) => g.org, className: "font-semibold", cell: (g) => g.org },
-    { key: "rep", header: "대표자", sortValue: (g) => g.rep, cell: (g) => g.rep || <span className="text-ink-3">—</span> },
-    { key: "note", header: "비고", hideOnMobile: true, className: "text-ink-3", cell: (g) => g.note || "—" },
-    { key: "photo", header: "사진", cell: (g) => <GoriPhotoCell row={g} canEdit={canWrite("gori", g)} /> },
+    { key: "org", header: t("gori.col.org"), sortValue: (g) => g.org, className: "font-semibold", cell: (g) => g.org },
+    { key: "rep", header: t("gori.col.rep"), sortValue: (g) => g.rep, cell: (g) => g.rep || <span className="text-ink-3">—</span> },
+    { key: "note", header: t("common.note"), hideOnMobile: true, className: "text-ink-3", cell: (g) => g.note || "—" },
+    { key: "photo", header: t("gori.col.photo"), cell: (g) => <GoriPhotoCell row={g} canEdit={canWrite("gori", g)} /> },
   ];
   if (editable)
     columns.push({
       key: "act",
-      header: <span className="sr-only">관리</span>,
+      header: <span className="sr-only">{t("gori.col.manage")}</span>,
       className: "w-0",
       cell: (g) => (
-        <Button size="icon-sm" variant="ghost" aria-label={`${mdw(g.date)} 일정 편집`} onClick={() => setEdit({ row: g })}>
+        <Button size="icon-sm" variant="ghost" aria-label={t("gori.editAria", { date: mdw(g.date) })} onClick={() => setEdit({ row: g })}>
           <Pencil />
         </Button>
       ),
@@ -112,15 +124,15 @@ export default function GoriPage() {
         icon={<Flower2 />}
         title={
           <>
-            고리기도 일정 <span className="text-[15px] font-normal text-ink-3">Prayer Chain</span>
+            {t("gori.title")} {titleSub && <span className="text-[15px] font-normal text-ink-3">{titleSub}</span>}
           </>
         }
-        subtitle={`WYD 준비 · 단체별 고리기도 배정표 (${list.length}일) · 매일 한 단체가 순례 성공을 위해 기도`}
+        subtitle={t("gori.subtitle", { n: list.length })}
         actions={
           editable && (
             <Button variant="primary" onClick={() => setEdit({ row: null })}>
               <Plus />
-              일정 추가
+              {t("gori.add")}
             </Button>
           )
         }
@@ -150,7 +162,7 @@ export default function GoriPage() {
       {upcoming.length > 0 && (
         <section className="mb-5" aria-labelledby="gori-up">
           <h2 id="gori-up" className="mb-2 text-[15px] font-semibold text-ink">
-            다가오는 일정 <span className="text-[13px] font-normal text-ink-3">· Upcoming</span>
+            {t("gori.upcoming")} {upSub && <span className="text-[13px] font-normal text-ink-3">· {upSub}</span>}
           </h2>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7">
             {upcoming.map((g) => (
@@ -177,10 +189,10 @@ export default function GoriPage() {
         <CardHeader
           title={
             <>
-              전체 배정표 <span className="font-normal text-ink-3">· Full Schedule</span>
+              {t("gori.full")} {fullSub && <span className="font-normal text-ink-3">· {fullSub}</span>}
             </>
           }
-          description={`${list.length}일`}
+          description={t("common.days", { n: list.length })}
         />
         {isLoading ? (
           <div className="space-y-2 px-5 pb-5">
@@ -195,7 +207,7 @@ export default function GoriPage() {
             rowKey={(g) => g.id}
             dense
             rowClassName={(g) => (g.date === todayIso ? "[&>td]:bg-primary-soft" : undefined)}
-            empty={<div className="py-12 text-center text-[13.5px] text-ink-3">등록된 고리기도 일정이 없습니다.</div>}
+            empty={<div className="py-12 text-center text-[13.5px] text-ink-3">{t("gori.empty")}</div>}
           />
         )}
       </Card>
@@ -206,9 +218,9 @@ export default function GoriPage() {
         onOpenChange={(o) => !o && setEdit(null)}
         row={edit?.row ?? null}
         size="md"
-        title={edit?.row ? `고리기도 일정 편집 · ${mdw(edit.row.date)}` : "고리기도 일정 추가"}
+        title={edit?.row ? t("gori.editTitle", { date: mdw(edit.row.date) }) : t("gori.addTitle")}
         defaults={defaults}
-        deleteLabel="이 날짜의 고리기도 배정을 삭제합니다. 올린 사진 연결도 함께 사라집니다."
+        deleteLabel={t("gori.deleteLabel")}
       />
     </div>
   );

@@ -1,13 +1,14 @@
 // 공용 CRUD — 낙관적 잠금(version) · 행 잠금(FOR UPDATE) · 배정 재검사 · 감사 로그 · 변경 알림
 import { Injectable } from "@nestjs/common";
 import { asc, eq, inArray, sql, getTableColumns } from "drizzle-orm";
-import { TABLE_NAMES, type TableName } from "@wyd/shared";
+import { DEFAULT_LOCALE, TABLE_NAMES, issueMsg, type Locale, type TableName } from "@wyd/shared";
 import { db, type Tx } from "../db/client.js";
 import * as S from "../db/schema.js";
 import { REGISTRY, canWrite, type TableDef } from "./registry.js";
 import type { AuthUser } from "../common/auth-user.js";
 import { ApiError, Conflict, Forbidden, Invalid, NotFound, Unauthorized, mapDbError } from "../common/errors.js";
 import { maskRow } from "../common/mask.js";
+import { issuesP, tr } from "../common/i18n.js";
 import { checkHostPolicy, checkVisitorStay } from "../visitors/stay.js";
 import { EventsService } from "../events/events.service.js";
 
@@ -32,8 +33,8 @@ function pickSchemaKeys(def: TableDef, r: Row): Row {
 function parse(def: TableDef, input: Row): Row {
   const r = def.schema.safeParse(input);
   if (!r.success) {
-    const issues = r.error.issues.map((i) => ({ path: i.path.join("."), message: i.message }));
-    throw Invalid(`${def.label} 입력값 확인: ${issues.map((i) => `${i.path} ${i.message}`).join(", ")}`, issues);
+    const issues = r.error.issues.map((i) => ({ path: i.path.join("."), message: i.message, ...issueMsg(i) }));
+    throw Invalid("err.invalidInput", issues, { table: tr(def.label), issues: issuesP(r.error.issues) });
   }
   return r.data;
 }
@@ -49,6 +50,7 @@ export interface WriteResult {
   row?: Row;
   error?: string;
   code?: string;
+  msgKey?: string;
   detail?: unknown;
 }
 
@@ -124,9 +126,9 @@ export class TablesService {
   }
 
   /** 일괄 저장(엑셀 붙여넣기·자동 배정 등). 행마다 SAVEPOINT — 실패한 행만 되돌리고 나머지는 저장 */
-  async bulk(name: TableName, rows: Row[], user?: AuthUser): Promise<WriteResult[]> {
-    if (!Array.isArray(rows)) throw Invalid("rows 배열이 필요합니다.");
-    if (rows.length > BULK_MAX) throw Invalid(`한 번에 최대 ${BULK_MAX}행까지 저장할 수 있습니다.`);
+  async bulk(name: TableName, rows: Row[], user?: AuthUser, locale: Locale = DEFAULT_LOCALE): Promise<WriteResult[]> {
+    if (!Array.isArray(rows)) throw Invalid("err.rowsRequired");
+    if (rows.length > BULK_MAX) throw Invalid("err.bulkMax", undefined, { max: BULK_MAX });
     // 결과 배열은 트랜잭션 콜백 안에서 만든다 — 교착으로 tx()가 재시도하면 이전 시도의 결과를 버려야 함
     const results = await this.tx(async (tx) => {
       const acc: WriteResult[] = [];
@@ -171,7 +173,7 @@ export class TablesService {
         } catch (e) {
           const err = mapDbError(e);
           if (err instanceof ApiError)
-            acc.push({ ok: false, code: err.code, error: (err.getResponse() as Row).message, detail: err.detail });
+            acc.push({ ok: false, code: err.code, error: err.render(locale), msgKey: err.msgKey, detail: err.detail });
           else throw err;
         }
       }
@@ -200,7 +202,7 @@ export class TablesService {
   async createIn(tx: Tx, name: TableName, input: Row, user?: AuthUser, opts: { skipAuth?: boolean } = {}): Promise<Row> {
     const def = REGISTRY[name];
     const data = parse(def, pickSchemaKeys(def, input));
-    if (!opts.skipAuth && !canWrite(def, user, null, data)) throw Forbidden(`${def.label} 추가 권한이 없습니다.`);
+    if (!opts.skipAuth && !canWrite(def, user, null, data)) throw Forbidden("err.forbiddenCreate", { table: tr(def.label) });
     const { slots, ...values } = data;
     if (name === "visitors") {
       values.pid = await this.ensureCode(tx, "visitors", values.pid);
@@ -224,16 +226,16 @@ export class TablesService {
   async updateIn(tx: Tx, name: TableName, id: number, patch: Row, user?: AuthUser): Promise<Row> {
     const def = REGISTRY[name];
     const T = def.table as any;
-    if (!Number.isInteger(id) || id <= 0) throw Invalid("잘못된 id");
+    if (!Number.isInteger(id) || id <= 0) throw Invalid("err.badId");
     const [cur] = (await tx.select().from(T).where(eq(T.id, id)).for("update")) as Row[];
-    this.assertRowAccess(def, user, cur, "수정");
-    if (patch.version == null) throw Invalid("version이 필요합니다(동시 수정 확인용).");
+    this.assertRowAccess(def, user, cur, "err.forbiddenUpdate");
+    if (patch.version == null) throw Invalid("err.versionRequired");
     if (Number(patch.version) !== cur.version) {
       throw Conflict(out(name === "schedule" ? (await this.attachSlots([cur], tx))[0] : cur));
     }
     const curSlots = name === "schedule" ? (await this.attachSlots([cur], tx))[0].slots : undefined;
     const merged = parse(def, { ...pickSchemaKeys(def, { ...cur, slots: curSlots }), ...pickSchemaKeys(def, patch) });
-    if (!canWrite(def, user, cur, merged)) throw Forbidden(`${def.label} 수정 권한이 없습니다.`);
+    if (!canWrite(def, user, cur, merged)) throw Forbidden("err.forbiddenUpdate", { table: tr(def.label) });
     const { slots, ...values } = merged;
     if (name === "visitors") {
       if (values.facilityId != null || values.homestayId != null) values.orphanStay = "";
@@ -255,20 +257,20 @@ export class TablesService {
    * 행을 보여 주기 전(Conflict 응답은 행 전체를 담음) 접근 확인.
    * 읽기 범위 밖이면 존재 자체를 숨기고(NOTFOUND), 쓰기 권한이 없으면 FORBIDDEN.
    */
-  private assertRowAccess(def: TableDef, user: AuthUser | undefined, cur: Row | undefined, verb: string): asserts cur is Row {
+  private assertRowAccess(def: TableDef, user: AuthUser | undefined, cur: Row | undefined, forbiddenKey: string): asserts cur is Row {
     if (!cur) throw NotFound(def.label);
     const scope = user && def.scope?.(user);
     if (scope && !scope(cur)) throw NotFound(def.label);
-    if (!canWrite(def, user, cur, cur)) throw Forbidden(`${def.label} ${verb} 권한이 없습니다.`);
+    if (!canWrite(def, user, cur, cur)) throw Forbidden(forbiddenKey, { table: tr(def.label) });
   }
 
   async removeIn(tx: Tx, name: TableName, id: number, version: number | undefined, user?: AuthUser) {
     const def = REGISTRY[name];
     const T = def.table as any;
     const [cur] = (await tx.select().from(T).where(eq(T.id, id)).for("update")) as Row[];
-    this.assertRowAccess(def, user, cur, "삭제");
+    this.assertRowAccess(def, user, cur, "err.forbiddenDelete");
     if (version != null && Number(version) !== cur.version) throw Conflict(out(cur));
-    if (!canWrite(def, user, cur, null)) throw Forbidden(`${def.label} 삭제 권한이 없습니다.`);
+    if (!canWrite(def, user, cur, null)) throw Forbidden("err.forbiddenDelete", { table: tr(def.label) });
     // 가정·시설 삭제 → 배정 방문자는 FK(ON DELETE SET NULL)로 자동 미배정. 몇 명인지 응답에 포함
     let cleared: number[] = [];
     if (name === "facilities" || name === "homestays") {
@@ -307,7 +309,7 @@ export class TablesService {
       const cand = prefix + pad3(n);
       if (!(await exists(cand))) return cand;
     }
-    throw Invalid("번호 발급 실패");
+    throw Invalid("err.codeIssueFailed");
   }
 
   async audit(tx: Tx, user: AuthUser | undefined, table: string, rowId: number | null, action: string, before: unknown, after: unknown) {

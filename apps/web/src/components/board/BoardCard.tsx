@@ -4,6 +4,7 @@ import { CalendarDays, UserRound } from "lucide-react";
 import { todayKST } from "@wyd/shared";
 import { Badge } from "@/components/ui/badge";
 import { cn, daysBetween } from "@/lib/utils";
+import { useT } from "@/lib/i18n";
 
 /** 최신순(날짜 → id) */
 export const newestFirst = <T extends { date: string; id: number }>(a: T, b: T) =>
@@ -57,6 +58,7 @@ export function BoardCard({
   children?: ReactNode;
   className?: string;
 }) {
+  const { t } = useT();
   return (
     <article
       className={cn("rounded-2xl border border-line bg-surface p-4 shadow-soft sm:p-5", accent && "border-l-4 border-l-primary", className)}
@@ -66,7 +68,7 @@ export function BoardCard({
           <div className="flex flex-wrap items-center gap-1.5">
             {badges}
             <h3 className="text-[15.5px] leading-snug font-semibold break-words text-ink">{title}</h3>
-            {date && isNew(date) && <Badge tone="red">NEW</Badge>}
+            {date && isNew(date) && <Badge tone="red">{t("board.new")}</Badge>}
           </div>
           <Meta date={date} author={author} />
         </div>

@@ -1,5 +1,6 @@
 import { Module } from "@nestjs/common";
-import { APP_GUARD } from "@nestjs/core";
+import { APP_FILTER, APP_GUARD } from "@nestjs/core";
+import { ApiErrorFilter } from "./common/errors.js";
 import { AuthGuard } from "./auth/auth.guard.js";
 import { AuthController } from "./auth/auth.controller.js";
 import { UsersController } from "./auth/users.controller.js";
@@ -25,6 +26,13 @@ import { WydService } from "./wyd/wyd.service.js";
     UploadsController,
     WydController,
   ],
-  providers: [UsersCache, TablesService, EventsService, WydService, { provide: APP_GUARD, useClass: AuthGuard }],
+  providers: [
+    UsersCache,
+    TablesService,
+    EventsService,
+    WydService,
+    { provide: APP_GUARD, useClass: AuthGuard },
+    { provide: APP_FILTER, useClass: ApiErrorFilter },
+  ],
 })
 export class AppModule {}

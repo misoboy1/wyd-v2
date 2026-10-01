@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Home, KeyRound, Pencil, Plus, ShieldCheck, Trash2, UserCog, Users as UsersIcon } from "lucide-react";
 import type { Homestay, Role } from "@wyd/shared";
-import { TEAM_NAMES, cmpStr } from "@wyd/shared";
+import { TEAM_NAMES, cmpStr, enumLabel } from "@wyd/shared";
 import { Empty, PageHeader, Segmented, Skeleton, Stat } from "@/components/ui/misc";
 import { Card } from "@/components/ui/card";
 import { Badge, type Tone } from "@/components/ui/badge";
@@ -13,7 +13,8 @@ import { confirm } from "@/components/ui/confirm";
 import { Checkbox, Field, Input, SearchInput, Select } from "@/components/ui/input";
 import { DataTable, type Column } from "@/components/ui/table";
 import { api } from "@/lib/api";
-import { ROLE_LABEL, useAuth } from "@/lib/auth";
+import { useAuth } from "@/lib/auth";
+import { useT } from "@/lib/i18n";
 import { errorMessage, useTable } from "@/lib/data";
 import { matchQuery } from "@/lib/utils";
 
@@ -31,26 +32,13 @@ interface Account {
 const USERS_KEY = ["users"] as const;
 const ROLE_TONE: Record<Role, Tone> = { admin: "red", dept: "blue", host: "gold" };
 const ROLES: Role[] = ["admin", "dept", "host"];
-const ROLE_HELP: Record<Role, string> = {
-  admin: "모든 화면을 보고 모든 자료를 수정할 수 있습니다. 계정 관리도 할 수 있습니다.",
-  dept: "모든 화면을 볼 수 있고, 자기 팀 봉사자만 추가·수정·삭제할 수 있습니다. 팀을 꼭 지정하세요.",
-  host: "자기 가정 정보와 배정된 순례자만 볼 수 있습니다. 연결할 홈스테이 가정을 꼭 지정하세요.",
-};
-
-const fmtTime = (s: string | null) => {
-  if (!s) return "—";
-  const d = new Date(s);
-  return isNaN(+d)
-    ? "—"
-    : new Intl.DateTimeFormat("ko-KR", {
-        timeZone: "Asia/Seoul",
-        year: "2-digit",
-        month: "2-digit",
-        day: "2-digit",
-        hour: "2-digit",
-        minute: "2-digit",
-        hour12: false,
-      }).format(d);
+const TIME_OPTS: Intl.DateTimeFormatOptions = {
+  year: "2-digit",
+  month: "2-digit",
+  day: "2-digit",
+  hour: "2-digit",
+  minute: "2-digit",
+  hour12: false,
 };
 const hsLabel = (h?: Homestay) => (h ? [h.hid, h.host, h.zone].filter(Boolean).join(" · ") : "");
 
@@ -78,6 +66,7 @@ function AccountDialog({
   homestays: Homestay[];
   meId?: number;
 }) {
+  const { t, label } = useT();
   const qc = useQueryClient();
   const [f, setF] = useState<Form>(EMPTY);
   const [err, setErr] = useState("");
@@ -120,18 +109,18 @@ function AccountDialog({
     },
     onSuccess: async () => {
       await qc.invalidateQueries({ queryKey: USERS_KEY });
-      toast.success(row ? "계정을 수정했습니다." + (f.password ? " (비밀번호 재설정됨)" : "") : "계정을 만들었습니다.");
+      toast.success(row ? t(f.password ? "users.updatedPw" : "users.updated") : t("users.created"));
       onOpenChange(false);
     },
     onError: (e) => setErr(errorMessage(e)),
   });
   const submit = () => {
     setErr("");
-    if (f.username.trim().length < 2) return setErr("아이디는 2자 이상이어야 합니다.");
-    if (!row && f.password.length < 8) return setErr("비밀번호는 8자 이상이어야 합니다.");
-    if (row && f.password && f.password.length < 8) return setErr("새 비밀번호는 8자 이상이어야 합니다.");
-    if (f.role === "dept" && !f.team) return setErr("분과 책임자는 팀을 지정해야 합니다.");
-    if (f.role === "host" && !f.homestayId) return setErr("홈스테이 가정 계정은 연결할 가정을 지정해야 합니다.");
+    if (f.username.trim().length < 2) return setErr(t("users.usernameMin"));
+    if (!row && f.password.length < 8) return setErr(t("users.pwMin"));
+    if (row && f.password && f.password.length < 8) return setErr(t("users.newPwMin"));
+    if (f.role === "dept" && !f.team) return setErr(t("users.deptNeedsTeam"));
+    if (f.role === "host" && !f.homestayId) return setErr(t("users.hostNeedsHome"));
     save.mutate();
   };
   const hsSorted = useMemo(() => homestays.slice().sort((a, b) => cmpStr(a.hid, b.hid)), [homestays]);
@@ -141,47 +130,41 @@ function AccountDialog({
       open={open}
       onOpenChange={(o) => !save.isPending && onOpenChange(o)}
       size="md"
-      title={row ? `계정 수정 · ${row.username}` : "새 계정"}
-      description={
-        row
-          ? "비밀번호·권한·팀·가정·활성 상태를 바꾸면 그 계정은 다시 로그인해야 합니다."
-          : "아이디와 초기 비밀번호를 사용자에게 따로 전달하세요."
-      }
+      title={row ? t("users.editTitle", { username: row.username }) : t("users.newTitle")}
+      description={row ? t("users.editDesc") : t("users.newDesc")}
       footer={
         <>
           <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={save.isPending}>
-            취소
+            {t("common.cancel")}
           </Button>
           <Button variant="primary" loading={save.isPending} onClick={submit}>
-            {row ? "저장" : "만들기"}
+            {row ? t("common.save") : t("users.create")}
           </Button>
         </>
       }
     >
       <div className="grid grid-cols-1 gap-x-4 gap-y-3.5 sm:grid-cols-2">
-        <Field label="아이디" required hint="영문·숫자·._@- 만 사용">
+        <Field label={t("users.username")} required hint={t("users.usernameHint")}>
           <Input data-autofocus value={f.username} autoComplete="off" onChange={(e) => set("username", e.target.value)} />
         </Field>
-        <Field label="이름">
-          <Input value={f.name} onChange={(e) => set("name", e.target.value)} placeholder="예: 최양업 토마스" />
+        <Field label={t("users.name")}>
+          <Input value={f.name} onChange={(e) => set("name", e.target.value)} placeholder={t("users.namePh")} />
         </Field>
-        <Field label="권한" required className="sm:col-span-2">
+        <Field label={t("users.role")} required className="sm:col-span-2">
           <Select value={f.role} disabled={self} onChange={(e) => set("role", e.target.value as Role)}>
             {ROLES.map((r) => (
               <option key={r} value={r}>
-                {ROLE_LABEL[r]}
+                {label("appRole", r)}
               </option>
             ))}
           </Select>
-          <span className="mt-1 block text-[12px] text-ink-3">
-            {self ? "자기 자신의 관리자 권한은 해제할 수 없습니다." : ROLE_HELP[f.role]}
-          </span>
+          <span className="mt-1 block text-[12px] text-ink-3">{self ? t("users.selfRole") : t(`users.roleHelp.${f.role}`)}</span>
         </Field>
         {f.role === "dept" && (
-          <Field label="팀" required className="sm:col-span-2" hint="이 팀의 봉사자만 추가·수정할 수 있습니다.">
+          <Field label={t("users.team")} required className="sm:col-span-2" hint={t("users.teamHint")}>
             <Select value={f.team} onChange={(e) => set("team", e.target.value)}>
-              <option value="">팀 선택</option>
-              {f.team && !TEAM_NAMES.includes(f.team) && <option value={f.team}>{f.team} (구 팀명)</option>}
+              <option value="">{t("users.teamPick")}</option>
+              {f.team && !TEAM_NAMES.includes(f.team) && <option value={f.team}>{t("org.oldTeamOpt", { team: f.team })}</option>}
               {TEAM_NAMES.map((t) => (
                 <option key={t} value={t}>
                   {t}
@@ -191,9 +174,9 @@ function AccountDialog({
           </Field>
         )}
         {f.role === "host" && (
-          <Field label="연결할 홈스테이 가정" required className="sm:col-span-2" hint="이 가정 정보와 배정된 순례자만 볼 수 있습니다.">
+          <Field label={t("users.home")} required className="sm:col-span-2" hint={t("users.homeHint")}>
             <Select value={f.homestayId ?? ""} onChange={(e) => set("homestayId", e.target.value ? Number(e.target.value) : null)}>
-              <option value="">가정 선택</option>
+              <option value="">{t("users.homePick")}</option>
               {hsSorted.map((h) => (
                 <option key={h.id} value={h.id}>
                   {hsLabel(h)}
@@ -202,13 +185,13 @@ function AccountDialog({
             </Select>
           </Field>
         )}
-        <Field label={row ? "새 비밀번호 (재설정할 때만)" : "초기 비밀번호"} required={!row} className="sm:col-span-2" hint="8자 이상">
+        <Field label={row ? t("users.newPw") : t("users.initPw")} required={!row} className="sm:col-span-2" hint={t("users.pwHint")}>
           <Input
             type="password"
             autoComplete="new-password"
             value={f.password}
             onChange={(e) => set("password", e.target.value)}
-            placeholder={row ? "비워 두면 그대로 유지" : ""}
+            placeholder={row ? t("users.keepPw") : ""}
           />
         </Field>
         {row && (
@@ -218,7 +201,7 @@ function AccountDialog({
               onChange={(v) => !self && set("active", v)}
               label={
                 <>
-                  활성 계정 <span className="text-ink-3">(끄면 로그인할 수 없음)</span>
+                  {t("users.activeAccount")} <span className="text-ink-3">{t("users.activeHint")}</span>
                 </>
               }
             />
@@ -235,31 +218,29 @@ function AccountDialog({
 }
 
 function RoleHelp() {
+  const { t, label } = useT();
   return (
     <Card className="mb-4 p-4 sm:p-5">
       <h2 className="mb-3 flex items-center gap-2 text-[15px] font-semibold text-ink">
         <UserCog className="size-4.5 text-ink-3" />
-        권한 안내
+        {t("users.roleHelpTitle")}
       </h2>
       <div className="grid gap-3 sm:grid-cols-3">
         {ROLES.map((r) => (
           <div key={r} className="rounded-xl border border-line bg-surface-2/50 p-3">
-            <Badge tone={ROLE_TONE[r]}>{ROLE_LABEL[r]}</Badge>
-            <p className="mt-2 text-[13px] leading-relaxed text-ink-2">
-              {r === "admin" ? "전체 편집" : r === "dept" ? "모두 보기 · 자기 팀 봉사자 편집" : "자기 가정·게스트만 보기"}
-            </p>
-            <p className="mt-1 text-[12px] leading-relaxed text-ink-3">{ROLE_HELP[r]}</p>
+            <Badge tone={ROLE_TONE[r]}>{label("appRole", r)}</Badge>
+            <p className="mt-2 text-[13px] leading-relaxed text-ink-2">{t(`users.roleShort.${r}`)}</p>
+            <p className="mt-1 text-[12px] leading-relaxed text-ink-3">{t(`users.roleHelp.${r}`)}</p>
           </div>
         ))}
       </div>
-      <p className="mt-3 text-[12px] text-ink-3">
-        로그인하지 않은 방문자는 대시보드·D-DAY 준비·일정표·공지사항·Q&A·추천 장소·고리기도만 볼 수 있습니다.
-      </p>
+      <p className="mt-3 text-[12px] text-ink-3">{t("users.guestNote")}</p>
     </Card>
   );
 }
 
 export default function Users() {
+  const { t, label, date, locale } = useT();
   const qc = useQueryClient();
   const { user: me } = useAuth();
   const { data: users = [], isLoading, error } = useQuery({ queryKey: USERS_KEY, queryFn: () => api.get<Account[]>("/users") });
@@ -274,17 +255,17 @@ export default function Users() {
       users.filter(
         (u) =>
           (role === "all" || u.role === role) &&
-          matchQuery(q, u.username, u.name, ROLE_LABEL[u.role], u.team, hsLabel(hsById.get(u.homestayId ?? -1))),
+          matchQuery(q, u.username, u.name, enumLabel(locale, "appRole", u.role), u.team, hsLabel(hsById.get(u.homestayId ?? -1))),
       ),
-    [users, role, q, hsById],
+    [users, role, q, hsById, locale],
   );
 
   const del = async (u: Account) => {
     if (
       !(await confirm({
-        title: `계정 '${u.username}'을(를) 삭제할까요?`,
-        body: "삭제하면 되돌릴 수 없습니다. 잠시 막으려면 편집에서 '활성'을 끄세요.",
-        confirmText: "삭제",
+        title: t("users.delTitle", { username: u.username }),
+        body: t("users.delBody"),
+        confirmText: t("common.delete"),
         danger: true,
         typeToConfirm: u.username,
       }))
@@ -292,7 +273,7 @@ export default function Users() {
       return;
     try {
       await api.del(`/users/${u.id}`);
-      toast.success("계정을 삭제했습니다.");
+      toast.success(t("users.deleted"));
     } catch (e) {
       toast.error(errorMessage(e));
     } finally {
@@ -303,32 +284,32 @@ export default function Users() {
   const columns: Column<Account>[] = [
     {
       key: "username",
-      header: "아이디",
+      header: t("users.username"),
       sortValue: (u) => u.username,
       cell: (u) => (
         <span className="font-semibold whitespace-nowrap">
           {u.username}
           {u.id === me?.id && (
             <Badge tone="outline" className="ml-1.5">
-              나
+              {t("users.me")}
             </Badge>
           )}
         </span>
       ),
     },
-    { key: "name", header: "이름", sortValue: (u) => u.name, cell: (u) => u.name || <span className="text-ink-3">—</span> },
+    { key: "name", header: t("users.name"), sortValue: (u) => u.name, cell: (u) => u.name || <span className="text-ink-3">—</span> },
     {
       key: "role",
-      header: "권한",
+      header: t("users.role"),
       sortValue: (u) => ROLES.indexOf(u.role),
-      cell: (u) => <Badge tone={ROLE_TONE[u.role]}>{ROLE_LABEL[u.role]}</Badge>,
+      cell: (u) => <Badge tone={ROLE_TONE[u.role]}>{label("appRole", u.role)}</Badge>,
     },
     {
       key: "link",
-      header: "팀 / 가정",
+      header: t("users.colLink"),
       cell: (u) => {
         if (u.role === "dept")
-          return u.team ? <Badge tone="blue">{u.team}</Badge> : <span className="text-[12.5px] text-bad">팀 미지정</span>;
+          return u.team ? <Badge tone="blue">{u.team}</Badge> : <span className="text-[12.5px] text-bad">{t("users.noTeam")}</span>;
         if (u.role === "host") {
           const h = hsById.get(u.homestayId ?? -1);
           return h ? (
@@ -337,44 +318,56 @@ export default function Users() {
               {hsLabel(h)}
             </span>
           ) : (
-            <span className="text-[12.5px] text-bad">{u.homestayId ? "가정 없음(삭제됨)" : "가정 미지정"}</span>
+            <span className="text-[12.5px] text-bad">{u.homestayId ? t("users.homeGone") : t("users.noHome")}</span>
           );
         }
-        return <span className="text-ink-3">전체</span>;
+        return <span className="text-ink-3">{t("common.all")}</span>;
       },
     },
     {
       key: "active",
-      header: "상태",
+      header: t("users.colStatus"),
       sortValue: (u) => (u.active ? 0 : 1),
-      cell: (u) => <Badge tone={u.active ? "green" : "gray"}>{u.active ? "활성" : "비활성"}</Badge>,
+      cell: (u) => <Badge tone={u.active ? "green" : "gray"}>{u.active ? t("users.active") : t("users.inactive")}</Badge>,
     },
     {
       key: "last",
-      header: "마지막 로그인",
+      header: t("users.colLast"),
       sortValue: (u) => u.lastLoginAt ?? "",
       hideOnMobile: true,
-      cell: (u) => <span className="whitespace-nowrap text-ink-2 tabular">{fmtTime(u.lastLoginAt)}</span>,
+      cell: (u) => <span className="whitespace-nowrap text-ink-2 tabular">{(u.lastLoginAt && date(u.lastLoginAt, TIME_OPTS)) || "—"}</span>,
     },
     {
       key: "act",
-      header: "관리",
+      header: t("users.colManage"),
       cell: (u) => (
         <div className="flex items-center gap-1 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
-          <Button size="icon-sm" variant="ghost" aria-label={`${u.username} 편집`} title="편집" onClick={() => setEdit({ row: u })}>
+          <Button
+            size="icon-sm"
+            variant="ghost"
+            aria-label={t("users.editName", { name: u.username })}
+            title={t("users.edit")}
+            onClick={() => setEdit({ row: u })}
+          >
             <Pencil />
           </Button>
           <Button
             size="icon-sm"
             variant="ghost"
-            aria-label={`${u.username} 비밀번호 재설정`}
-            title="비밀번호 재설정"
+            aria-label={t("users.resetPwName", { name: u.username })}
+            title={t("users.resetPw")}
             onClick={() => setEdit({ row: u })}
           >
             <KeyRound />
           </Button>
           {u.id !== me?.id && (
-            <Button size="icon-sm" variant="danger-ghost" aria-label={`${u.username} 삭제`} title="삭제" onClick={() => void del(u)}>
+            <Button
+              size="icon-sm"
+              variant="danger-ghost"
+              aria-label={t("users.deleteName", { name: u.username })}
+              title={t("common.delete")}
+              onClick={() => void del(u)}
+            >
               <Trash2 />
             </Button>
           )}
@@ -388,30 +381,36 @@ export default function Users() {
     <div>
       <PageHeader
         icon={<ShieldCheck />}
-        title="계정 관리"
-        subtitle="본당 관리자 전용 · 봉사자·가정 로그인 계정과 권한"
+        title={t("nav.users")}
+        subtitle={t("users.subtitle")}
         actions={
           <Button variant="primary" onClick={() => setEdit({ row: null })}>
-            <Plus />새 계정
+            <Plus />
+            {t("users.newAccount")}
           </Button>
         }
       />
       <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <Stat label="전체 계정" value={users.length} icon={<UsersIcon />} />
-        <Stat label={ROLE_LABEL.admin} value={count("admin")} />
-        <Stat label={ROLE_LABEL.dept} value={count("dept")} tone="primary" />
-        <Stat label={ROLE_LABEL.host} value={count("host")} tone="gold" hint={`비활성 ${users.filter((u) => !u.active).length}개`} />
+        <Stat label={t("users.totalAccounts")} value={users.length} icon={<UsersIcon />} />
+        <Stat label={label("appRole", "admin")} value={count("admin")} />
+        <Stat label={label("appRole", "dept")} value={count("dept")} tone="primary" />
+        <Stat
+          label={label("appRole", "host")}
+          value={count("host")}
+          tone="gold"
+          hint={t("users.inactiveCount", { n: users.filter((u) => !u.active).length })}
+        />
       </div>
       <RoleHelp />
       <Card className="overflow-hidden">
         <div className="flex flex-wrap items-center gap-2 border-b border-line px-4 py-3">
-          <SearchInput value={q} onChange={setQ} placeholder="검색: 아이디·이름·팀·가정" className="min-w-56 flex-1" />
+          <SearchInput value={q} onChange={setQ} placeholder={t("users.searchPh")} className="min-w-56 flex-1" />
           <Segmented
             value={role}
             onChange={setRole}
             options={[
-              { value: "all", label: "전체", count: users.length },
-              ...ROLES.map((r) => ({ value: r, label: ROLE_LABEL[r], count: count(r) })),
+              { value: "all", label: t("common.all"), count: users.length },
+              ...ROLES.map((r) => ({ value: r, label: label("appRole", r), count: count(r) })),
             ]}
           />
         </div>
@@ -422,7 +421,7 @@ export default function Users() {
             <Skeleton className="h-10" />
           </div>
         ) : error ? (
-          <Empty icon={<ShieldCheck />} title="계정 목록을 불러오지 못했습니다.">
+          <Empty icon={<ShieldCheck />} title={t("users.loadFail")}>
             {errorMessage(error)}
           </Empty>
         ) : (
@@ -433,7 +432,7 @@ export default function Users() {
             onRowClick={(u) => setEdit({ row: u })}
             initialSort={{ key: "role", dir: 1 }}
             rowClassName={(u) => (u.active ? undefined : "opacity-60")}
-            empty={<Empty icon={<UsersIcon />} title={users.length ? "조건에 맞는 계정이 없습니다." : "계정이 없습니다."} />}
+            empty={<Empty icon={<UsersIcon />} title={users.length ? t("users.noMatch") : t("users.noAccounts")} />}
           />
         )}
       </Card>

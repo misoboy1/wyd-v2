@@ -15,7 +15,7 @@ import {
   X,
   Zap,
 } from "lucide-react";
-import { famText, hsCaps, PARISH, reqSex, SCALE, zoneApt, type Homestay, type StayIndex, type Visitor } from "@wyd/shared";
+import { hsCaps, PARISH, reqSex, SCALE, zoneApt, type Homestay, type MsgKey, type StayIndex, type Visitor } from "@wyd/shared";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -28,7 +28,8 @@ import { PasteImport, type PasteDef } from "@/components/form/PasteImport";
 import { useCan } from "@/lib/auth";
 import { downloadCSV } from "@/lib/csv";
 import { printDocument } from "@/lib/print";
-import { cmp, cn, matchQuery, num } from "@/lib/utils";
+import { cmp, cn, matchQuery } from "@/lib/utils";
+import { useT } from "@/lib/i18n";
 import { useStayIndex } from "@/components/stay/useStayIndex";
 import { GuestList } from "@/components/stay/GuestList";
 import { VisitorEditDialog } from "@/components/stay/VisitorEditDialog";
@@ -36,29 +37,29 @@ import { AutoAssignDialog } from "@/components/stay/AutoAssignDialog";
 import { PrintPicker } from "@/components/stay/PrintPicker";
 import { TeamRoster } from "@/components/stay/TeamRoster";
 import { Dash, FamBadges, HsStatus, Pager, ReqSexBadge, SortHead, Tel, usePage, type SortState } from "@/components/stay/bits";
-import { applyCols, dupHosts, homestayCols, hsFill, hsLabel, sexSummary, type HsFill } from "@/components/stay/stay";
+import { applyCols, dupHosts, famLabel, homestayCols, hsFill, hsLabel, sexSummary, type HsFill, type Tr } from "@/components/stay/stay";
 
 type SortKey = "hid" | "zone" | "zoneApt" | "host" | "addr" | "tel" | "family" | "lang" | "period" | "cap" | "reqSex" | "status" | "note";
 const NUMERIC = ["mAdult", "fAdult", "mStu", "fStu", "mYng", "fYng", "cap"];
-const PASTE: PasteDef = {
-  label: "홈스테이 가정",
+const pasteDef = ({ t }: Tr): PasteDef => ({
+  label: t("stay.hs.pasteLabel"),
   table: "homestays",
   cols: [
-    ["host", "가정(대표자)"],
-    ["zone", "구역"],
-    ["addr", "주소"],
-    ["tel", "연락처"],
-    ["mAdult", "성인남"],
-    ["fAdult", "성인여"],
-    ["mStu", "남학생"],
-    ["fStu", "여학생"],
-    ["mYng", "남청년"],
-    ["fYng", "여청년"],
-    ["lang", "언어"],
-    ["cap", "수용"],
-    ["period", "기간"],
-    ["status", "상태"],
-    ["note", "비고"],
+    ["host", t("stay.hs.pasteHost")],
+    ["zone", t("stay.col.zone")],
+    ["addr", t("stay.col.addr")],
+    ["tel", t("stay.col.tel")],
+    ["mAdult", t("stay.fam.mAdult")],
+    ["fAdult", t("stay.fam.fAdult")],
+    ["mStu", t("stay.fam.mStu")],
+    ["fStu", t("stay.fam.fStu")],
+    ["mYng", t("stay.fam.mYng")],
+    ["fYng", t("stay.fam.fYng")],
+    ["lang", t("stay.col.lang")],
+    ["cap", t("stay.col.cap")],
+    ["period", t("stay.col.period")],
+    ["status", t("stay.col.status")],
+    ["note", t("stay.col.note")],
   ],
   // 숫자 칸: "2명" 같은 표기도 숫자만 남김
   mapRow: (o) => {
@@ -71,23 +72,22 @@ const PASTE: PasteDef = {
     });
     return r;
   },
-};
-const PRINT_GROUPERS: [string, string][] = [
-  ["zone", "구역"],
-  ["zoneApt", "단지"],
-];
-const printKey = (h: Homestay, by: string) => (by === "zone" ? h.zone || "미지정" : zoneApt(h.zone) || "미지정");
+});
+/** 구역 필터의 '구역 없음' 값(주소 저장용 내부 값 — 화면에는 번역해 표시) */
+const NO_ZONE = "미지정";
 const NEW_HS = { status: "제안" };
 
-function sortVal(h: Homestay, k: SortKey): unknown {
+function sortVal(h: Homestay, k: SortKey, tr: Tr): unknown {
   if (k === "cap") return hsCaps(h).cap;
   if (k === "zoneApt") return zoneApt(h.zone);
   if (k === "reqSex") return reqSex(h);
-  if (k === "family") return famText(h, false);
+  if (k === "family") return famLabel(h, false, tr);
   return (h as any)[k];
 }
 
 export default function Homestays() {
+  const tr = useT();
+  const { t, num } = tr;
   const { I, homestays, isLoading } = useStayIndex();
   const { isAdmin, canWrite, user } = useCan();
   const editable = canWrite("homestays");
@@ -130,8 +130,8 @@ export default function Homestays() {
   useEffect(() => {
     if (!focus) return;
     setOpen((s) => new Set(s).add(focus.id));
-    const t = setTimeout(() => document.querySelector(".hs-focus-row")?.scrollIntoView({ block: "center", behavior: "smooth" }), 80);
-    return () => clearTimeout(t);
+    const tm = setTimeout(() => document.querySelector(".hs-focus-row")?.scrollIntoView({ block: "center", behavior: "smooth" }), 80);
+    return () => clearTimeout(tm);
   }, [focus?.id]); // eslint-disable-line react-hooks/exhaustive-deps -- 포커스 가정이 바뀔 때만 펼침·스크롤(의도)
 
   const dup = useMemo(() => dupHosts(homestays), [homestays]);
@@ -143,7 +143,7 @@ export default function Homestays() {
   const zones = useMemo(() => {
     const c = new Map<string, number>();
     homestays.forEach((h) => {
-      const z = h.zone || "미지정";
+      const z = h.zone || NO_ZONE;
       c.set(z, (c.get(z) || 0) + 1);
     });
     return [...c].sort((a, b) => cmp(a[0], b[0]));
@@ -159,15 +159,15 @@ export default function Homestays() {
       : homestays.filter(
           (h) =>
             (fill === "all" || hsFill(h, I) === fill) &&
-            (!zone || (h.zone || "미지정") === zone) &&
+            (!zone || (h.zone || NO_ZONE) === zone) &&
             matchQuery(dq, h.hid, h.host, h.zone, zoneApt(h.zone), h.addr, h.tel, h.lang, h.period, h.match, h.status, h.note),
         );
     return list.slice().sort((a, b) => {
-      const x = sortVal(a, sort.key),
-        y = sortVal(b, sort.key);
+      const x = sortVal(a, sort.key, tr),
+        y = sortVal(b, sort.key, tr);
       return (typeof x === "number" && typeof y === "number" ? x - y : cmp(x, y)) * sort.dir;
     });
-  }, [homestays, I, focus, fill, zone, dq, sort]);
+  }, [homestays, I, focus, fill, zone, dq, sort, tr]);
   const pg = usePage(sorted.length, page, size);
   const pageRows = sorted.slice(pg.start, pg.end);
   const pageAllOpen = pageRows.length > 0 && pageRows.every((h) => open.has(h.id));
@@ -178,7 +178,9 @@ export default function Homestays() {
       else n.add(id);
       return n;
     });
-  const cols = useMemo(() => homestayCols(I), [I]);
+  const cols = useMemo(() => homestayCols(I, tr), [I, tr]);
+  const paste = useMemo(() => pasteDef(tr), [tr]);
+  const printKey = useCallback((h: Homestay, by: string) => (by === "zone" ? h.zone : zoneApt(h.zone)) || t("stay.ui.unset"), [t]);
   const byHid = useMemo(() => homestays.slice().sort((a, b) => cmp(a.hid, b.hid)), [homestays]);
   const clearFocus = () =>
     setSp(
@@ -192,58 +194,66 @@ export default function Homestays() {
     );
 
   const columns = useMemo<Column<Homestay>[]>(() => {
-    const H = (k: SortKey, l: string) => <SortHead k={k} label={l} sort={sort} onSort={setSort} />;
+    const H = (k: SortKey, l: MsgKey) => <SortHead k={k} label={t(l)} sort={sort} onSort={setSort} />;
     const c: Column<Homestay>[] = [
-      { key: "hid", header: H("hid", "번호"), cell: (h) => <span className="font-semibold whitespace-nowrap">{h.hid || "—"}</span> },
-      { key: "zone", header: H("zone", "구역"), cell: (h) => (h.zone ? <Badge>{h.zone}</Badge> : <Dash />) },
+      {
+        key: "hid",
+        header: H("hid", "stay.col.pid"),
+        cell: (h) => <span className="font-semibold whitespace-nowrap">{h.hid || "—"}</span>,
+      },
+      { key: "zone", header: H("zone", "stay.col.zone"), cell: (h) => (h.zone ? <Badge>{h.zone}</Badge> : <Dash />) },
       {
         key: "zoneApt",
-        header: H("zoneApt", "아파트단지"),
+        header: H("zoneApt", "stay.col.zoneApt"),
         className: "min-w-28 text-[12.5px] text-ink-3",
         cell: (h) => zoneApt(h.zone),
         hideOnMobile: true,
       },
       {
         key: "host",
-        header: H("host", "가정"),
+        header: H("host", "stay.col.host"),
         cell: (h) => (
           <span className="inline-flex items-center gap-1.5 font-semibold whitespace-nowrap">
             {h.host}
             {dup.has(String(h.host || "").trim()) && (
-              <Badge tone="red" title="같은 이름의 가정이 있습니다. 세례명·구역으로 구분하세요.">
-                동명
+              <Badge tone="red" title={t("stay.hs.dupBadgeTitle")}>
+                {t("stay.hs.dupBadge")}
               </Badge>
             )}
           </span>
         ),
       },
-      { key: "addr", header: H("addr", "주소"), className: "min-w-40", cell: (h) => h.addr || <Dash />, hideOnMobile: true },
-      { key: "tel", header: H("tel", "연락처"), cell: (h) => <Tel tel={h.tel} /> },
+      { key: "addr", header: H("addr", "stay.col.addr"), className: "min-w-40", cell: (h) => h.addr || <Dash />, hideOnMobile: true },
+      { key: "tel", header: H("tel", "stay.col.tel"), cell: (h) => <Tel tel={h.tel} /> },
       {
         key: "family",
-        header: H("family", "가족 인원"),
+        header: H("family", "stay.col.family"),
         cell: (h) => (
           <>
             <span className="max-md:hidden">
               <FamBadges h={h} />
             </span>
-            <span className="text-[12.5px] whitespace-nowrap md:hidden">{famText(h, true)}</span>
+            <span className="text-[12.5px] whitespace-nowrap md:hidden">{famLabel(h, true, tr)}</span>
           </>
         ),
       },
-      { key: "lang", header: H("lang", "언어"), cell: (h) => <span className="whitespace-nowrap">{h.lang || "—"}</span> },
+      { key: "lang", header: H("lang", "stay.col.lang"), cell: (h) => <span className="whitespace-nowrap">{h.lang || "—"}</span> },
       {
         key: "period",
-        header: H("period", "기간"),
+        header: H("period", "stay.col.period"),
         cell: (h) => <span className="whitespace-nowrap">{h.period || "—"}</span>,
         hideOnMobile: true,
       },
-      { key: "cap", header: H("cap", "수용"), cell: (h) => <span className="tabular whitespace-nowrap">{hsCaps(h).cap || "—"}명</span> },
-      { key: "reqSex", header: H("reqSex", "요청 성별"), cell: (h) => <ReqSexBadge h={h} /> },
-      { key: "status", header: H("status", "상태"), cell: (h) => <HsStatus s={h.status} /> },
+      {
+        key: "cap",
+        header: H("cap", "stay.col.cap"),
+        cell: (h) => <span className="tabular whitespace-nowrap">{hsCaps(h).cap ? t("common.people", { n: hsCaps(h).cap }) : "—"}</span>,
+      },
+      { key: "reqSex", header: H("reqSex", "stay.col.reqSex"), cell: (h) => <ReqSexBadge h={h} /> },
+      { key: "status", header: H("status", "stay.col.status"), cell: (h) => <HsStatus s={h.status} /> },
       {
         key: "note",
-        header: H("note", "비고"),
+        header: H("note", "stay.col.note"),
         className: "min-w-28 max-w-60 text-ink-3",
         cell: (h) => (
           <span className="line-clamp-2 whitespace-pre-wrap" title={h.note}>
@@ -252,21 +262,25 @@ export default function Homestays() {
         ),
         hideOnMobile: true,
       },
-      { key: "guests", header: "숙박자", cell: (h) => <GuestsCell h={h} I={I} open={open.has(h.id)} onToggle={() => toggle(h.id)} /> },
+      {
+        key: "guests",
+        header: t("stay.col.guests"),
+        cell: (h) => <GuestsCell h={h} I={I} open={open.has(h.id)} onToggle={() => toggle(h.id)} />,
+      },
     ];
     if (editable)
       c.push({
         key: "edit",
-        header: <span className="sr-only">관리</span>,
+        header: <span className="sr-only">{t("stay.ui.manage")}</span>,
         cell: (h) => (
           <Button size="sm" variant="ghost" onClick={() => setEdit({ row: h })}>
             <Pencil />
-            편집
+            {t("stay.ui.edit")}
           </Button>
         ),
       });
     return c;
-  }, [sort, dup, I, open, editable]);
+  }, [sort, dup, I, open, editable, t, tr]);
 
   if (isLoading)
     return (
@@ -287,25 +301,21 @@ export default function Homestays() {
     <div className="space-y-4">
       <PageHeader
         icon={<Home />}
-        title={isHost ? "우리 홈스테이 가정" : "홈스테이 가정 관리"}
-        subtitle={
-          isHost
-            ? "우리 가정 정보와 배정된 방문자"
-            : `총 ${num(homestays.length)}가정 / 최대 ${num(SCALE.homestays)}가정 · 검색·배정상태·구역 필터 · 열 제목 정렬`
-        }
+        title={isHost ? t("stay.hs.titleHost") : t("stay.hs.title")}
+        subtitle={isHost ? t("stay.hs.subtitleHost") : t("stay.hs.subtitle", { total: homestays.length, max: SCALE.homestays })}
         actions={
           <>
             {fromVisitors && (
               <Button variant="ghost" onClick={() => navigate(-1)}>
                 <ChevronLeft />
-                방문자 명단으로
+                {t("stay.hs.backToVisitors")}
               </Button>
             )}
             <Menu
               trigger={
                 <Button>
                   <FileDown />
-                  내보내기
+                  {t("stay.ui.export")}
                 </Button>
               }
             >
@@ -313,69 +323,67 @@ export default function Homestays() {
                 icon={<Download />}
                 onSelect={() =>
                   downloadCSV(
-                    `${PARISH.name}_홈스테이`,
+                    `${PARISH.name}_${t("stay.hs.file")}`,
                     cols.map((c) => c[0]),
                     applyCols(cols, byHid),
                   )
                 }
               >
-                CSV 내려받기
+                {t("stay.ui.csvDownload")}
               </MenuItem>
               <MenuSep />
               <MenuItem
                 icon={<Printer />}
                 onSelect={() =>
-                  printDocument(`${PARISH.name} 홈스테이 가정 명단`, [{ columns: cols.map((c) => c[0]), rows: applyCols(cols, byHid) }], {
-                    kpis: [
-                      ["등록 가정", num(homestays.length)],
-                      ["총 수용", num(kpi.cap) + "명"],
-                      ["배정", num(I.inHs) + "명"],
-                    ],
-                  })
+                  printDocument(
+                    t("stay.hs.printTitle", { parish: PARISH.name }),
+                    [{ columns: cols.map((c) => c[0]), rows: applyCols(cols, byHid) }],
+                    {
+                      kpis: [
+                        [t("stay.hs.kpiHomes"), num(homestays.length)],
+                        [t("stay.hs.kpiCap"), t("common.people", { n: kpi.cap })],
+                        [t("stay.hs.kpiAssigned"), t("common.people", { n: I.inHs })],
+                      ],
+                    },
+                  )
                 }
               >
-                전체 인쇄 / PDF
+                {t("stay.ui.printAll")}
               </MenuItem>
               {!isHost && (
                 <MenuItem icon={<Printer />} onSelect={() => setPrintOpen(true)}>
-                  구역·단지별 선택 인쇄…
+                  {t("stay.hs.printGroups")}
                 </MenuItem>
               )}
             </Menu>
             {editable && (
               <Button onClick={() => setPasteOpen(true)}>
                 <ClipboardPaste />
-                엑셀 붙여넣기
+                {t("stay.ui.paste")}
               </Button>
             )}
             {isAdmin && (
               <Button variant="soft" onClick={() => setAaOpen(true)}>
                 <Zap />
-                자동 배정
+                {t("stay.ui.autoAssign")}
               </Button>
             )}
             {editable && (
               <Button variant="primary" onClick={() => setEdit({ row: null })}>
                 <Plus />
-                추가
+                {t("common.add")}
               </Button>
             )}
           </>
         }
       />
 
-      <TeamRoster
-        icon="🏠"
-        title="홈스테이팀 명단"
-        desc="가정 모집·호스트 교육·참가자-가정 소통 담당 (3~4명)"
-        teamName="홈스테이팀"
-        keywords={["홈스테이"]}
-      />
+      <TeamRoster icon="🏠" title={t("stay.hs.teamTitle")} desc={t("stay.hs.teamDesc")} teamName="홈스테이팀" keywords={["홈스테이"]} />
 
       {!isHost && (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
           <Stat
-            label="등록 가정"
+            label={t("stay.hs.statHomes")}
             value={
               <>
                 {num(homestays.length)}
@@ -384,11 +392,11 @@ export default function Homestays() {
             }
             onClick={() => setParam("fill", "all")}
           />
-          <Stat label="총 수용 (퇴실 제외)" value={`${num(kpi.cap)}명`} />
-          <Stat label="배정 인원" value={`${num(I.inHs)}명`} tone="good" />
-          <Stat label="잔여 수용" value={`${num(kpi.left)}명`} />
+          <Stat label={t("stay.hs.statCap")} value={t("common.people", { n: kpi.cap })} />
+          <Stat label={t("stay.hs.statAssigned")} value={t("common.people", { n: I.inHs })} tone="good" />
+          <Stat label={t("stay.hs.statLeft")} value={t("common.people", { n: kpi.left })} />
           <Stat
-            label="미배정 가정"
+            label={t("stay.hs.statNone")}
             value={num(kindCnt.none)}
             tone={kindCnt.none ? "warn" : undefined}
             onClick={() => setParam("fill", "none")}
@@ -401,8 +409,8 @@ export default function Homestays() {
         <div className="flex gap-2.5 rounded-2xl border border-bad/30 bg-bad-soft/60 p-3.5 text-[13.5px] text-ink-2">
           <AlertTriangle className="mt-0.5 size-4 shrink-0 text-bad" />
           <div>
-            <b className="text-bad">동명 가정 {dup.size}건</b> — 대표자 이름이 같은 가정이 있습니다. 배정은 가정 번호(H번호)로 구분되지만,
-            혼동 방지를 위해 세례명·동호수 등을 이름에 덧붙여 주세요.
+            <b className="text-bad">{t("stay.hs.dupTitle", { n: dup.size })}</b>
+            {t("stay.hs.dupBody")}
           </div>
         </div>
       )}
@@ -410,32 +418,27 @@ export default function Homestays() {
       {!isHost && (
         <Card className="space-y-2.5 p-3 lg:sticky lg:top-[4.5rem] lg:z-10">
           <div className="flex flex-wrap items-center gap-2">
-            <SearchInput
-              value={q}
-              onChange={(v) => setParam("q", v)}
-              placeholder="검색: 가정명·번호·구역·단지·주소·연락처·언어"
-              className="min-w-56 flex-1"
-            />
-            <Select aria-label="구역" value={zone} onChange={(e) => setParam("zone", e.target.value)} className="w-44">
-              <option value="">전체 구역 ({zones.length})</option>
+            <SearchInput value={q} onChange={(v) => setParam("q", v)} placeholder={t("stay.hs.search")} className="min-w-56 flex-1" />
+            <Select aria-label={t("stay.col.zone")} value={zone} onChange={(e) => setParam("zone", e.target.value)} className="w-44">
+              <option value="">{t("stay.ui.zoneAll", { count: zones.length })}</option>
               {zones.map(([z, n]) => (
                 <option key={z} value={z}>
-                  {z} ({n})
+                  {z === NO_ZONE ? t("stay.ui.unset") : z} ({n})
                 </option>
               ))}
             </Select>
           </div>
           <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-            <span className="text-[12.5px] text-ink-3">배정</span>
+            <span className="text-[12.5px] text-ink-3">{t("stay.hs.filterFill")}</span>
             <Segmented
               value={fill}
               onChange={(v) => setParam("fill", v)}
               options={[
-                { value: "all", label: "전체", count: homestays.length },
-                { value: "none", label: "미배정", count: kindCnt.none },
-                { value: "free", label: "여유", count: kindCnt.free },
-                { value: "full", label: "만실", count: kindCnt.full },
-                ...(kindCnt.over || fill === "over" ? [{ value: "over" as const, label: "초과", count: kindCnt.over }] : []),
+                { value: "all", label: t("common.all"), count: homestays.length },
+                { value: "none", label: t("stay.hs.fillNone"), count: kindCnt.none },
+                { value: "free", label: t("stay.hs.fillFree"), count: kindCnt.free },
+                { value: "full", label: t("stay.hs.fillFull"), count: kindCnt.full },
+                ...(kindCnt.over || fill === "over" ? [{ value: "over" as const, label: t("stay.hs.fillOver"), count: kindCnt.over }] : []),
               ]}
             />
           </div>
@@ -445,32 +448,32 @@ export default function Homestays() {
       {focus && (
         <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-primary/40 bg-primary-soft/60 px-4 py-3 text-[13.5px]">
           <span>
-            🏠 <b className="text-ink">{hsLabel(focus)}</b> 가정만 표시 중 · 숙박자 {focusGuests}/{hsCaps(focus).cap || "—"}명
+            🏠 <b className="text-ink">{hsLabel(focus)}</b> {t("stay.hs.focusA", { n: focusGuests, cap: hsCaps(focus).cap || "—" })}
           </span>
           <span className="flex-1" />
           <Button size="sm" variant="secondary" onClick={clearFocus}>
             <X />
-            전체 가정 보기
+            {t("stay.hs.showAll")}
           </Button>
           {fromVisitors && (
             <Button size="sm" variant="primary" onClick={() => navigate(-1)}>
               <ChevronLeft />
-              방문자 명단으로
+              {t("stay.hs.backToVisitors")}
             </Button>
           )}
         </div>
       )}
       {focusId != null && !focus && homestays.length > 0 && (
         <div className="flex items-center gap-2 rounded-xl bg-warn-soft px-4 py-2.5 text-[13px] text-warn">
-          요청한 가정(#{focusId})을 찾을 수 없습니다.{" "}
+          {t("stay.hs.focusMissing", { id: String(focusId) })}{" "}
           <Button size="sm" variant="ghost" onClick={clearFocus}>
-            전체 가정 보기
+            {t("stay.hs.showAll")}
           </Button>
         </div>
       )}
 
       <div className="flex flex-wrap items-center gap-2">
-        <span className="mr-auto text-[12.5px] text-ink-3">'숙박자'를 누르면 그 가정 밑에 방문자 명단(연동)이 펼쳐집니다.</span>
+        <span className="mr-auto text-[12.5px] text-ink-3">{t("stay.hs.expandHint")}</span>
         {pageRows.length > 0 && (
           <Button
             size="sm"
@@ -485,17 +488,19 @@ export default function Homestays() {
           >
             {pageAllOpen ? (
               <>
-                <ChevronUp />이 페이지 모두 접기
+                <ChevronUp />
+                {t("stay.hs.collapsePage")}
               </>
             ) : (
               <>
-                <ChevronDown />이 페이지 모두 펼치기
+                <ChevronDown />
+                {t("stay.hs.expandPage")}
               </>
             )}
           </Button>
         )}
       </div>
-      {!focus && <Pager total={sorted.length} unit="가정" page={pg.p} size={size} onPage={setPage} onSize={setSize} />}
+      {!focus && <Pager total={sorted.length} unit="homes" page={pg.p} size={size} onPage={setPage} onSize={setSize} />}
 
       <Card className="overflow-hidden">
         <DataTable
@@ -512,46 +517,40 @@ export default function Homestays() {
               title={hsLabel(h)}
               list={I.byHomestay.get(h.id) || []}
               cap={hsCaps(h).cap}
-              emptyMsg="이 가정에 배정된 방문자가 없습니다."
+              emptyMsg={t("stay.hs.guestEmpty")}
               onGo={isHost ? undefined : () => navigate(`/visitors?hs=${h.id}`)}
               onEdit={setVisEdit}
             />
           )}
           empty={
             homestays.length ? (
-              <Empty title="조건에 맞는 가정이 없습니다.">검색어나 필터를 바꿔 보세요.</Empty>
+              <Empty title={t("stay.hs.noMatch")}>{t("stay.ui.noMatchHint")}</Empty>
             ) : (
-              <Empty icon={<Home />} title={isHost ? "연결된 홈스테이 가정이 없습니다" : "등록된 가정이 없습니다"}>
-                {isHost
-                  ? "본당 관리자에게 계정과 가정 연결을 요청하세요."
-                  : editable
-                    ? "＋ 추가 또는 엑셀 붙여넣기로 가정을 등록하세요."
-                    : null}
+              <Empty icon={<Home />} title={isHost ? t("stay.hs.emptyHost") : t("stay.hs.empty")}>
+                {isHost ? t("stay.hs.emptyHostHint") : editable ? t("stay.hs.emptyHint") : null}
               </Empty>
             )
           }
         />
       </Card>
-      {!focus && pg.pages > 1 && <Pager total={sorted.length} unit="가정" page={pg.p} size={size} onPage={setPage} onSize={setSize} />}
+      {!focus && pg.pages > 1 && <Pager total={sorted.length} unit="homes" page={pg.p} size={size} onPage={setPage} onSize={setSize} />}
 
-      {!isHost && (
-        <p className="px-1 text-[12px] leading-relaxed text-ink-3">
-          ※ 기본 정렬: 번호순. 열 제목을 누르면 해당 항목으로 오름/내림차순 전환됩니다. '아파트단지'는 구역별 지도를 참고해 자동 표시됩니다.
-          수용 인원이 비어 있으면 요청 성별 인원(학생+청년) 합계를 수용으로 봅니다.
-        </p>
-      )}
+      {!isHost && <p className="px-1 text-[12px] leading-relaxed text-ink-3">{t("stay.hs.footnote")}</p>}
 
       {editable && <HomestayEditDialog row={edit?.row ?? null} open={!!edit} onOpenChange={(o) => !o && setEdit(null)} all={homestays} />}
       <VisitorEditDialog open={!!visEdit} onOpenChange={(o) => !o && setVisEdit(null)} row={visEdit} />
       {isAdmin && <AutoAssignDialog open={aaOpen} onOpenChange={setAaOpen} />}
-      {editable && <PasteImport def={PASTE} open={pasteOpen} onOpenChange={setPasteOpen} />}
+      {editable && <PasteImport def={paste} open={pasteOpen} onOpenChange={setPasteOpen} />}
       {!isHost && (
         <PrintPicker
           open={printOpen}
           onOpenChange={setPrintOpen}
-          label="홈스테이"
-          unit="가정"
-          groupers={PRINT_GROUPERS}
+          label={t("stay.hs.printLabel")}
+          unit="homes"
+          groupers={[
+            ["zone", t("stay.col.zone")],
+            ["zoneApt", t("stay.hs.groupApt")],
+          ]}
           keyOf={printKey}
           rows={sorted}
           cols={cols}
@@ -563,6 +562,8 @@ export default function Homestays() {
 
 /** 숙박자 칸: 펼치기 버튼 + 성별 구성·배정/수용(초과 빨강) */
 function GuestsCell({ h, I, open, onToggle }: { h: Homestay; I: StayIndex; open: boolean; onToggle: () => void }) {
+  const tr = useT();
+  const { t } = tr;
   const ps = I.byHomestay.get(h.id) || [];
   const cap = hsCaps(h).cap,
     n = ps.length,
@@ -573,21 +574,21 @@ function GuestsCell({ h, I, open, onToggle }: { h: Homestay; I: StayIndex; open:
         {open ? (
           <>
             <ChevronUp />
-            접기
+            {t("stay.ui.collapse")}
           </>
         ) : n ? (
           <>
             <ChevronDown />
-            {n}명 보기
+            {t("stay.ui.showN", { n })}
           </>
         ) : (
-          "배정 없음"
+          t("stay.ui.noGuests")
         )}
       </Button>
       {n ? (
         <span className={cn("text-[12px] tabular", over ? "font-semibold text-bad" : "text-ink-3")}>
-          {sexSummary(ps)} · {n}/{cap || "—"}
-          {over && " 초과"}
+          {sexSummary(ps, tr)} · {n}/{cap || "—"}
+          {over && t("stay.hs.overSuffix")}
         </span>
       ) : cap ? (
         <span className="text-[12px] text-ink-3 tabular">0/{cap}</span>
@@ -608,6 +609,7 @@ function HomestayEditDialog({
   onOpenChange: (v: boolean) => void;
   all: Homestay[];
 }) {
+  const { t } = useT();
   return (
     <EditDialog
       table="homestays"
@@ -615,28 +617,23 @@ function HomestayEditDialog({
       onOpenChange={onOpenChange}
       row={row}
       defaults={NEW_HS}
-      title={row ? `편집 · 홈스테이 가정 ${hsLabel(row)}` : "추가 · 홈스테이 가정"}
-      deleteLabel="삭제하면 되돌릴 수 없습니다. 이 가정에 배정되어 있던 방문자는 '미배정'이 됩니다."
+      title={row ? t("stay.hs.editTitle", { label: hsLabel(row) }) : t("stay.hs.addTitle")}
+      deleteLabel={t("stay.hs.deleteLabel")}
       custom={{
         host: (v, set) => {
           const name = String(v.host || "").trim();
           const d = name ? all.find((h) => h.host.trim() === name && h.id !== row?.id) : undefined;
           return (
             <>
-              <Input value={v.host ?? ""} onChange={(e) => set("host", e.target.value)} placeholder="예: 최양업 토마스" />
-              {d && (
-                <span className="mt-1 block text-[12px] text-warn">
-                  ⚠ 같은 이름의 가정({hsLabel(d)})이 이미 있습니다. 배정은 가정 번호로 구분되지만 혼동될 수 있으니 세례명·동호수 등을
-                  덧붙이는 것을 권장합니다.
-                </span>
-              )}
+              <Input value={v.host ?? ""} onChange={(e) => set("host", e.target.value)} placeholder={t("stay.hs.hostPh")} />
+              {d && <span className="mt-1 block text-[12px] text-warn">{t("stay.hs.dupWarn", { label: hsLabel(d) })}</span>}
             </>
           );
         },
         zone: (v, set) => (
           <>
-            <Input value={v.zone ?? ""} onChange={(e) => set("zone", e.target.value)} placeholder="예: 2-1구역" />
-            {v.zone && <span className="mt-1 block text-[12px] text-ink-3">아파트단지: {zoneApt(v.zone)}</span>}
+            <Input value={v.zone ?? ""} onChange={(e) => set("zone", e.target.value)} placeholder={t("stay.hs.zonePh")} />
+            {v.zone && <span className="mt-1 block text-[12px] text-ink-3">{t("stay.hs.aptLine", { apt: zoneApt(v.zone) })}</span>}
           </>
         ),
       }}

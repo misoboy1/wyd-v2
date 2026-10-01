@@ -2,7 +2,7 @@ import { Body, Controller, Get, HttpCode, Post, Req, Res } from "@nestjs/common"
 import type { FastifyReply, FastifyRequest } from "fastify";
 import { eq, sql } from "drizzle-orm";
 import { hash, verify } from "@node-rs/argon2";
-import { loginSchema } from "@wyd/shared";
+import { issueMsg, loginSchema } from "@wyd/shared";
 import { z } from "zod";
 import { db } from "../db/client.js";
 import { users } from "../db/schema.js";
@@ -70,11 +70,11 @@ export class AuthController {
   @HttpCode(200)
   async login(@Body() body: unknown, @Req() req: FastifyRequest, @Res({ passthrough: true }) reply: FastifyReply) {
     const p = loginSchema.safeParse(body);
-    if (!p.success) throw Invalid("아이디와 비밀번호를 입력하세요.");
+    if (!p.success) throw Invalid("err.login.required");
     const ip = clientIp(req),
       key = `${p.data.username.toLowerCase()}|${ip}`;
     const wait = Math.max(byUserIp.retryAfter(key), byIp.retryAfter(ip));
-    if (wait) throw new ApiError("RATE_LIMIT", `로그인 시도가 너무 많습니다. ${Math.ceil(wait / 60000)}분 후 다시 시도하세요.`, 429);
+    if (wait) throw new ApiError("RATE_LIMIT", "err.login.tooMany", 429, undefined, { n: Math.ceil(wait / 60000) });
     const uname = p.data.username.toLowerCase();
     const run = serialPerUser(uname, async () => {
       const fails = byUser.count(uname);
@@ -87,13 +87,13 @@ export class AuthController {
         row && row.active ? await verify(row.passwordHash, p.data.password) : (await verify(await DUMMY, p.data.password), false);
       return { u: row, ok: good };
     });
-    if (!run) throw new ApiError("RATE_LIMIT", "이 계정으로 로그인 시도가 몰려 있습니다. 잠시 후 다시 시도하세요.", 429);
+    if (!run) throw new ApiError("RATE_LIMIT", "err.login.busy", 429);
     byUserIp.hit(key);
     byIp.hit(ip);
     const { u, ok } = await run;
     if (!ok || !u) {
       byUser.hit(uname);
-      throw new ApiError("LOGIN_FAILED", "아이디 또는 비밀번호가 올바르지 않습니다.", 401);
+      throw new ApiError("LOGIN_FAILED", "err.login.failed", 401);
     }
     byUserIp.reset(key);
     byIp.undo(ip);
@@ -107,10 +107,10 @@ export class AuthController {
   @HttpCode(200)
   async refresh(@Req() req: FastifyRequest, @Res({ passthrough: true }) reply: FastifyReply) {
     const c = verifyToken<RefreshClaims>(req.cookies?.[REFRESH_COOKIE], "refresh");
-    if (!c) throw Unauthorized("세션이 만료되었습니다. 다시 로그인하세요.");
+    if (!c) throw Unauthorized("err.login.sessionExpired");
     this.cache.invalidate(c.sub);
     const u = await this.cache.get(c.sub);
-    if (!u || !u.active || u.tokenVersion !== c.tv) throw Unauthorized("세션이 만료되었습니다. 다시 로그인하세요.");
+    if (!u || !u.active || u.tokenVersion !== c.tv) throw Unauthorized("err.login.sessionExpired");
     this.setCookies(reply, u.id, u.tokenVersion);
     return { user: this.publicUser(u) };
   }
@@ -132,11 +132,13 @@ export class AuthController {
   @HttpCode(200)
   @RequireLogin()
   async changePassword(@Body() body: unknown, @CurrentUser() user: AuthUser, @Res({ passthrough: true }) reply: FastifyReply) {
-    const p = z.object({ current: z.string().min(1), next: z.string().min(8, "새 비밀번호는 8자 이상").max(200) }).safeParse(body);
-    if (!p.success) throw Invalid(p.error.issues[0]?.message || "입력 확인");
+    const p = z.object({ current: z.string().min(1), next: z.string().min(8, "valid.newPasswordMin").max(200) }).safeParse(body);
+    if (!p.success) {
+      const m = p.error.issues[0] ? issueMsg(p.error.issues[0]) : { key: "err.checkInput" };
+      throw Invalid(m.key, undefined, m.params);
+    }
     const [u] = await db.select().from(users).where(eq(users.id, user.id));
-    if (!u || !(await verify(u.passwordHash, p.data.current)))
-      throw new ApiError("LOGIN_FAILED", "현재 비밀번호가 올바르지 않습니다.", 400);
+    if (!u || !(await verify(u.passwordHash, p.data.current))) throw new ApiError("LOGIN_FAILED", "err.login.wrongCurrent", 400);
     const tv = u.tokenVersion + 1; // 다른 기기 세션 모두 로그아웃
     await db
       .update(users)

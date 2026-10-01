@@ -2,6 +2,7 @@
 import type { ReactNode } from "react";
 import { BookOpen, ChevronDown, ScrollText } from "lucide-react";
 import { GORI_RITE } from "@wyd/shared";
+import { useT } from "@/lib/i18n";
 
 function Fold({
   icon,
@@ -51,28 +52,22 @@ const Scripture = ({ children }: { children: ReactNode }) => (
 
 /** 기도 순서·준비물 안내(기존 화면의 접이식 안내) */
 export function GoriGuide() {
+  const { t } = useT();
   return (
-    <Fold icon={<BookOpen />} title="기도 순서·준비물 안내" sub="누르면 펼쳐집니다">
+    <Fold icon={<BookOpen />} title={t("gori.guide.title")} sub={t("gori.guide.sub")}>
       <dl className="grid gap-x-4 gap-y-2.5 text-[13.5px] leading-relaxed sm:grid-cols-[7rem_1fr]">
-        <dt className="font-semibold text-ink">기도 순서</dt>
+        <dt className="font-semibold text-ink">{t("gori.guide.order")}</dt>
+        <dd className="text-ink-2">{t("gori.guide.orderText")}</dd>
+        <dt className="font-semibold text-ink">{t("gori.guide.place")}</dt>
         <dd className="text-ink-2">
-          성호경 → 복음낭독(요한 16,25-33 "내가 세상을 이겼다") → 묵주기도 5단(각 단마다 WYD 지향 봉헌) → 성모찬송 → 2027 서울 세계청년대회
-          공식기도문 → 성호경
+          {t("gori.guide.placeText")} · <b className="text-ink">{t("gori.guide.time")}</b>: {t("gori.guide.timeText")}
         </dd>
-        <dt className="font-semibold text-ink">기도 장소</dt>
-        <dd className="text-ink-2">
-          각 단체 회합실 및 교리실 · <b className="text-ink">시간</b>: 단체가 자유롭게 정함
-        </dd>
-        <dt className="font-semibold text-ink">기도 물품</dt>
-        <dd className="text-ink-2">
-          십자가·초(2)·촛대(2)·이콘·상본·제대보·기도 예식서·이콘 받침대(2) — 양업관 입구 &lt;WYD 고리기도&gt; 사물함 비치
-        </dd>
-        <dt className="font-semibold text-ink">개인 준비물</dt>
-        <dd className="text-ink-2">묵주 (기도 후 성당 입구 봉헌함에 묵주알 봉헌)</dd>
+        <dt className="font-semibold text-ink">{t("gori.guide.items")}</dt>
+        <dd className="text-ink-2">{t("gori.guide.itemsText")}</dd>
+        <dt className="font-semibold text-ink">{t("gori.guide.personal")}</dt>
+        <dd className="text-ink-2">{t("gori.guide.personalText")}</dd>
       </dl>
-      <p className="mt-3 text-[12.5px] text-ink-3">
-        ※ 이콘 거치대는 아크릴 소재로 파손 위험이 있으니 조심히 다루어 주세요. 기도 모습을 사진으로 찍어 분과장에게 전달 바랍니다.
-      </p>
+      <p className="mt-3 text-[12.5px] text-ink-3">{t("gori.guide.note")}</p>
     </Fold>
   );
 }
@@ -80,45 +75,46 @@ export function GoriGuide() {
 /** 예식서 전문 */
 export function GoriRite() {
   const R = GORI_RITE;
+  const { t } = useT();
+  const contentNote = t("gori.rite.contentNote");
   return (
-    <Fold icon={<ScrollText />} title="고리기도 예식서 전문" sub="2027 WYD 성공적 개최를 위한 묵주 고리기도 예식서">
+    <Fold icon={<ScrollText />} title={t("gori.rite.title")} sub={t("gori.rite.sub")}>
       <article className="mx-auto max-w-2xl space-y-6">
-        <Step n="1" title="기도 차림 및 유의사항">
+        {/* 예식서 본문(GORI_RITE)은 한국어 원문 그대로 — 다른 언어에서는 안내 문구 표시 */}
+        {contentNote && <Note>{contentNote}</Note>}
+        <Step n="1" title={t("gori.rite.step1")}>
           <ol className="list-decimal space-y-1.5 pl-5 marker:text-ink-3">
-            {R.prep.map((t, i) => (
-              <li key={i}>{t}</li>
+            {R.prep.map((line, i) => (
+              <li key={i}>{line}</li>
             ))}
           </ol>
         </Step>
-        <Step n="2" title="시작 · 복음 낭독">
-          <Note>성호경 → 복음 낭독</Note>
+        <Step n="2" title={t("gori.rite.step2")}>
+          <Note>{t("gori.rite.step2Note")}</Note>
           <p className="font-semibold text-ink">{R.gospel.ref}</p>
           <Scripture>{R.gospel.text}</Scripture>
-          <Note>✠ 주님의 말씀입니다. ◎ 그리스도님 찬미합니다.</Note>
+          <Note>{t("gori.rite.gospelResp")}</Note>
         </Step>
-        <Step n="3" title="묵주기도 5단 (각 단 지향)">
-          <Note>사도신경 → 주님의 기도 → 성모송(3회) → 영광송 → 구원의 기도</Note>
+        <Step n="3" title={t("gori.rite.step3")}>
+          <Note>{t("gori.rite.step3Note")}</Note>
           <ol className="space-y-2">
-            {R.decades.map((t, i) => (
+            {R.decades.map((intent, i) => (
               <li key={i} className="rounded-xl border border-line px-3.5 py-2.5">
                 <div className="flex gap-2.5">
-                  <span className="shrink-0 font-bold text-primary tabular">{i + 1}단</span>
-                  <span className="text-ink">{t}</span>
+                  <span className="shrink-0 font-bold text-primary tabular">{t("gori.rite.decade", { n: i + 1 })}</span>
+                  <span className="text-ink">{intent}</span>
                 </div>
-                <div className="mt-1 pl-8 text-[12px] text-ink-3">주님의 기도 · 성모송(10회) · 영광송 · 구원의 기도</div>
+                <div className="mt-1 pl-8 text-[12px] text-ink-3">{t("gori.rite.decadePrayers")}</div>
               </li>
             ))}
           </ol>
-          <Note>5단을 다 바친 후 &lt;성모 찬송&gt; 기도 (예식서 참조)</Note>
+          <Note>{t("gori.rite.afterDecades")}</Note>
         </Step>
-        <Step n="4" title="2027 서울 세계청년대회 공식기도문">
+        <Step n="4" title={t("gori.rite.step4")}>
           <Scripture>{R.official}</Scripture>
-          <Note>→ 성호경으로 마칩니다.</Note>
+          <Note>{t("gori.rite.step4Note")}</Note>
         </Step>
-        <p className="border-t border-line pt-3 text-[12px] text-ink-3">
-          ※ 사도신경·주님의 기도·성모송·영광송·구원의 기도·성모 찬송 전문은 준비된 인쇄 예식서를 참고하세요(양업관 입구 &lt;WYD 고리기도&gt;
-          사물함 비치).
-        </p>
+        <p className="border-t border-line pt-3 text-[12px] text-ink-3">{t("gori.rite.footnote")}</p>
       </article>
     </Fold>
   );

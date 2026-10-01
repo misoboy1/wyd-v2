@@ -1,5 +1,6 @@
 import type { HTMLAttributes } from "react";
 import { cn } from "@/lib/utils";
+import { useT } from "@/lib/i18n";
 
 const tones = {
   gray: "bg-surface-2 text-ink-2 border-line",
@@ -22,8 +23,14 @@ export const Badge = ({ tone = "gray", className, ...p }: HTMLAttributes<HTMLSpa
   />
 );
 /** 성별 배지 (남=파랑, 여=주황) */
-export const SexBadge = ({ sex }: { sex: string }) =>
-  !sex ? <Badge tone="outline">성별?</Badge> : <Badge tone={sex === "남" ? "blue" : "amber"}>{sex}</Badge>;
+export function SexBadge({ sex }: { sex: string }) {
+  const { t, label } = useT();
+  return !sex ? (
+    <Badge tone="outline">{t("shell.ui.sexUnknown")}</Badge>
+  ) : (
+    <Badge tone={sex === "남" ? "blue" : "amber"}>{label("sex", sex)}</Badge>
+  );
+}
 /** 상태 배지 — 흔한 상태값 색 매핑 */
 const STATUS_TONE: Record<string, Tone> = {
   확정: "green",
@@ -36,5 +43,11 @@ const STATUS_TONE: Record<string, Tone> = {
   사용중: "blue",
   점검중: "red",
 };
-export const StatusBadge = ({ status }: { status: string }) =>
-  status ? <Badge tone={STATUS_TONE[status] ?? "gray"}>{status}</Badge> : null;
+export function StatusBadge({ status }: { status: string }) {
+  const { label } = useT();
+  if (!status) return null;
+  // 상태값은 방문자·가정·시설 공용 → 사전에 있는 그룹의 라벨 사용(없으면 원문)
+  const groups = ["visitorStatus", "homestayStatus", "facilityStatus"] as const;
+  const text = groups.map((g) => label(g, status)).find((l) => l !== status) ?? status;
+  return <Badge tone={STATUS_TONE[status] ?? "gray"}>{text}</Badge>;
+}

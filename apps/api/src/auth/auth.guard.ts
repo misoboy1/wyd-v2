@@ -26,7 +26,7 @@ export class AuthGuard implements CanActivate {
     if (ctx.getType() !== "http") return true;
     const req = ctx.switchToHttp().getRequest<FastifyRequest>();
     if (req.method !== "GET" && req.method !== "HEAD" && req.headers["x-wyd"] !== "1") {
-      throw new ApiError("CSRF", "잘못된 요청입니다(X-WYD 헤더 없음).", 403);
+      throw new ApiError("CSRF", "err.csrf", 403);
     }
     const claims = verifyToken<AccessClaims>(req.cookies?.[ACCESS_COOKIE], "access");
     if (claims) {

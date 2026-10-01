@@ -2,9 +2,13 @@
 import { useEffect, useMemo, useRef } from "react";
 import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { TABLE_NAMES, type Dataset, type TableName } from "@wyd/shared";
+import { TABLE_NAMES, translateDynamic, type Dataset, type TableName } from "@wyd/shared";
 import { api, ApiError } from "./api";
 import { useAuth, useCan, AUTH_TABLES } from "./auth";
+import { getLocale, tt } from "./i18n";
+
+/** 서버·검증 메시지 키를 현재 언어로(키가 아니면 그대로) */
+const tdNow = (k: string) => translateDynamic(getLocale(), k);
 
 export type RowOf<T extends TableName> = Dataset[T][number];
 export const tableKey = (t: TableName) => ["t", t] as const;
@@ -122,7 +126,7 @@ function upsertInCache(qc: QueryClient, t: TableName, row: any) {
 
 export function errorMessage(e: unknown): string {
   if (e instanceof ApiError) return e.message;
-  return (e as Error)?.message || "알 수 없는 오류";
+  return (e as Error)?.message || tt("shell.data.unknownError");
 }
 
 /**
@@ -193,7 +197,7 @@ export function useRemove<T extends TableName>(t: T) {
     onSuccess: (r) => {
       if (t === "facilities" || t === "homestays") {
         void qc.invalidateQueries({ queryKey: tableKey("visitors") });
-        if (r?.cleared) toast.info(`배정되어 있던 방문자 ${r.cleared}명은 '미배정'으로 바뀌었습니다.`);
+        if (r?.cleared) toast.info(tt("shell.data.cleared", { n: r.cleared }));
       }
     },
   });
@@ -256,15 +260,21 @@ export async function unassignStays(qc: QueryClient, scope: "orphan" | "unconfir
 export function toastBulk(label: string, res: BulkResult[]) {
   const ok = res.filter((r) => r.ok).length,
     ng = res.length - ok;
-  if (!ng) toast.success(`${label}: ${ok.toLocaleString()}건 저장`);
+  if (!ng) toast.success(tt("shell.data.bulkOk", { label, n: ok }));
   else {
     const reasons = new Map<string, number>();
-    res.filter((r) => !r.ok).forEach((r) => reasons.set(r.error || "오류", (reasons.get(r.error || "오류") || 0) + 1));
+    const fallback = tt("shell.data.error");
+    res
+      .filter((r) => !r.ok)
+      .forEach((r) => {
+        const m = r.error ? tdNow(r.error) : fallback;
+        reasons.set(m, (reasons.get(m) || 0) + 1);
+      });
     const top = [...reasons.entries()]
       .slice(0, 3)
       .map(([m, n]) => `${m} (${n})`)
       .join("\n");
-    toast.warning(`${label}: 성공 ${ok} · 실패 ${ng}`, { description: top, duration: 10000 });
+    toast.warning(tt("shell.data.bulkPartial", { label, ok, ng }), { description: top, duration: 10000 });
   }
 }
 

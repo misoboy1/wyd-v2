@@ -4,6 +4,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useCan } from "@/lib/auth";
 import { cmp } from "@/lib/utils";
+import { useT } from "@/lib/i18n";
+import type { MsgKey } from "@wyd/shared";
 import { Dash, SexTag, Tel, VisStatus } from "./bits";
 
 /**
@@ -15,7 +17,7 @@ export function GuestList({
   list,
   cap,
   emptyMsg,
-  goLabel = "방문자 명단에서 보기 ›",
+  goLabel,
   onGo,
   onEdit,
 }: {
@@ -27,6 +29,7 @@ export function GuestList({
   onGo?: () => void;
   onEdit?: (v: Visitor) => void;
 }) {
+  const { t } = useT();
   const { canWrite } = useCan();
   const editable = !!onEdit && canWrite("visitors");
   const rows = list.slice().sort((a, b) => cmp(a.pid, b.pid));
@@ -35,27 +38,28 @@ export function GuestList({
   const groups = [...new Set(rows.map((p) => p.gno).filter(Boolean))];
   const langs = [...new Set(rows.map((p) => p.lang).filter(Boolean))];
   const c = Number(cap) || 0;
-  const heads = ["번호", "그룹", "이름", "성별", "국가", "언어", "기간", "역할", "상태", "연락처", "비고"];
+  const heads = HEADS.map((k) => t(k));
 
   return (
     <div className="px-3 py-3 sm:px-4">
       <div className="mb-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px]">
         <b className="text-ink">{title}</b>
         <span className="text-ink-2">
-          숙박 방문자 {rows.length}명{c ? ` / 수용 ${c}명` : ""}
+          {t("stay.guest.summary", { n: rows.length })}
+          {c ? t("stay.guest.capPart", { cap: c }) : ""}
         </span>
-        {c > 0 && rows.length > c && <Badge tone="red">초과</Badge>}
+        {c > 0 && rows.length > c && <Badge tone="red">{t("stay.ui.over")}</Badge>}
         {rows.length > 0 && (
           <span className="text-ink-3">
-            · 남 {m} · 여 {w}
-            {groups.length ? " · 그룹 " + groups.join(", ") : ""}
+            {t("stay.guest.mf", { m, w })}
+            {groups.length ? t("stay.guest.groups", { list: groups.join(", ") }) : ""}
             {langs.length ? " · " + langs.join("/") : ""}
           </span>
         )}
         <span className="flex-1" />
         {onGo && (
           <Button size="sm" variant="ghost" onClick={onGo}>
-            {goLabel.replace(/\s*›$/, "")}
+            {(goLabel ?? t("stay.guest.go")).replace(/\s*›$/, "")}
             <ChevronRight />
           </Button>
         )}
@@ -72,7 +76,7 @@ export function GuestList({
                 ))}
                 {editable && (
                   <th className="px-2.5 py-1.5">
-                    <span className="sr-only">관리</span>
+                    <span className="sr-only">{t("stay.ui.manage")}</span>
                   </th>
                 )}
               </tr>
@@ -101,7 +105,7 @@ export function GuestList({
                     <td className="px-2.5 py-1.5 text-right">
                       <Button size="sm" variant="ghost" onClick={() => onEdit(p)}>
                         <Pencil />
-                        편집
+                        {t("stay.ui.edit")}
                       </Button>
                     </td>
                   )}
@@ -112,10 +116,23 @@ export function GuestList({
         </div>
       ) : (
         <p className="rounded-xl border border-dashed border-line bg-surface px-3 py-3 text-[13px] text-ink-3">
-          {emptyMsg || "배정된 방문자가 없습니다."}
-          {editable && " 방문자 명단에서 숙소를 지정하거나 ⚡ 자동 배정을 사용하세요."}
+          {emptyMsg || t("stay.guest.empty")}
+          {editable && t("stay.guest.emptyHint")}
         </p>
       )}
     </div>
   );
 }
+const HEADS: MsgKey[] = [
+  "stay.col.pid",
+  "stay.col.gno",
+  "stay.col.name",
+  "stay.col.sex",
+  "stay.col.country",
+  "stay.col.lang",
+  "stay.col.period",
+  "stay.col.role",
+  "stay.col.status",
+  "stay.col.tel",
+  "stay.col.note",
+];

@@ -28,10 +28,10 @@ export class UploadsController {
     @CurrentUser() user: AuthUser,
   ) {
     const file = await req.file({ limits: { fileSize: MAX, files: 1 } });
-    if (!file) throw Invalid("사진 파일이 없습니다.");
-    if (!OK_TYPES.has(file.mimetype)) throw Invalid("jpg·png·webp·gif·heic 사진만 올릴 수 있습니다.");
+    if (!file) throw Invalid("err.upload.noFile");
+    if (!OK_TYPES.has(file.mimetype)) throw Invalid("err.upload.type");
     const buf = await file.toBuffer();
-    if (file.file.truncated) throw Invalid("사진은 10MB 이하만 올릴 수 있습니다.");
+    if (file.file.truncated) throw Invalid("err.upload.size");
     let out: Buffer;
     try {
       out = await sharp(buf, { failOn: "error" })
@@ -40,7 +40,7 @@ export class UploadsController {
         .webp({ quality: 80 })
         .toBuffer();
     } catch {
-      throw Invalid("이미지를 읽을 수 없습니다(손상된 파일이거나 지원하지 않는 형식).");
+      throw Invalid("err.upload.unreadable");
     }
     const dir = path.resolve(env.UPLOAD_DIR, "gori");
     await mkdir(dir, { recursive: true });

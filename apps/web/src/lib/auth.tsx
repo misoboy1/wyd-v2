@@ -1,9 +1,10 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import type { Role, TableName, User } from "@wyd/shared";
+import type { TableName, User } from "@wyd/shared";
 import { teamInfo, VOLUNTEER_VIEW_ROLES } from "@wyd/shared";
 import { api, setSessionExpiredHandler } from "./api";
+import { tt } from "./i18n";
 
 type AuthUser = Pick<User, "id" | "username" | "name" | "role" | "team" | "homestayId">;
 interface AuthCtx {
@@ -17,7 +18,6 @@ interface AuthCtx {
 }
 const Ctx = createContext<AuthCtx | null>(null);
 
-export const ROLE_LABEL: Record<Role, string> = { admin: "본당 관리자", dept: "분과 책임자", host: "홈스테이 가정" };
 /** 로그인해야 볼 수 있는 표(서버 REGISTRY.read === "auth"와 동일) */
 export const AUTH_TABLES: TableName[] = ["facilities", "homestays", "visitors", "volunteers", "posts"];
 
@@ -48,7 +48,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setSessionExpiredHandler(() => {
       setUser((u) => {
         if (u) {
-          toast.warning("세션이 만료되었습니다. 다시 로그인하세요.");
+          toast.warning(tt("shell.loginDlg.sessionExpired"));
           setLoginOpen(true);
         }
         return null;
