@@ -15,18 +15,18 @@ import {
   ShieldCheck,
   type LucideIcon,
 } from "lucide-react";
-import { VOLUNTEER_VIEW_ROLES, type MsgKey, type Role } from "@wyd/shared";
+import { VOLUNTEER_VIEW_ROLES, type NavKey, type Role } from "@wyd/shared";
 
 export interface NavItem {
   path: string;
   /** 메뉴 라벨 메시지 키(nav.*) */
-  label: MsgKey;
+  label: NavKey;
   icon: LucideIcon;
   auth?: boolean;
   roles?: readonly Role[];
 }
 export interface NavGroup {
-  label: MsgKey;
+  label: NavKey;
   items: NavItem[];
 }
 

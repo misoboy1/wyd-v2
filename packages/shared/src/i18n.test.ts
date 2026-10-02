@@ -1,9 +1,25 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
-import { describe, expect, it } from "vitest";
-import { enumLabel, fmtWeekday, hasMessage, normSex, resolveLocale, translate, translateDynamic } from "./index.js";
+import { beforeAll, describe, expect, it, vi } from "vitest";
+import { enumLabel, fmtWeekday, hasMessage, loadAllLocales, normSex, resolveLocale, translate, translateDynamic } from "./index.js";
+
+describe("i18n 지연 로딩", () => {
+  it("받기 전 언어는 ko로 폴백, loadLocale 후 번역", async () => {
+    vi.resetModules();
+    const m = await import("./i18n/index.js");
+    expect(m.hasLocale("fr")).toBe(false);
+    expect(m.hasLocale("en")).toBe(false);
+    expect(m.navLabelEn("nav.dash")).toBe("Dashboard"); // 영어 사전을 받지 않아도 메뉴 라벨은 영어
+    expect(m.translate("fr", "common.save")).toBe("저장");
+    expect(m.enumLabel("fr", "sex", "여")).toBe("여");
+    await m.loadLocale("fr");
+    expect(m.hasLocale("fr")).toBe(true);
+    expect(m.enumLabel("fr", "sex", "여")).toBe("Femme");
+  });
+});
 
 describe("i18n", () => {
+  beforeAll(loadAllLocales);
   it("resolveLocale: Accept-Language 우선순위·기본값", () => {
     expect(resolveLocale("pt-BR,pt;q=0.9")).toBe("pt");
     expect(resolveLocale("de-DE,fr;q=0.5,en;q=0.8")).toBe("en");

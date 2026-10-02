@@ -11,8 +11,10 @@ import { env } from "./common/env.js";
 import { registerEtag } from "./common/etag.js";
 import { runMigrations } from "./db/migrate.js";
 import { ensureBootstrap } from "./cli/bootstrap.js";
+import { loadAllLocales } from "@wyd/shared";
 
 async function main() {
+  await loadAllLocales(); // 응답 언어(Accept-Language)별 오류 문구 — 모든 언어 사전 상시 메모리
   await runMigrations();
   await ensureBootstrap();
 

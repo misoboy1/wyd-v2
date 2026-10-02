@@ -1,0 +1,23 @@
+// 입력 검증(zod) 메시지 — schemas.ts의 메시지 키와 zod 기본 오류(issueMsg) 번역. 필드명 뒤에 붙는 짧은 꼴
+export const valid = {
+  nonNegativeNumber: "0 이상의 숫자",
+  facilityNameRequired: "공간 이름 필수",
+  hostRequired: "대표자 필수",
+  nameRequired: "이름 필수",
+  questionRequired: "질문 내용 필수",
+  dateFormat: "YYYY-MM-DD 형식",
+  usernameChars: "아이디는 영문·숫자·._@- 만",
+  passwordMin: "비밀번호는 8자 이상",
+  newPasswordMin: "새 비밀번호는 8자 이상",
+  required: "필수",
+  tooShort: "{min}자 이상",
+  tooLong: "{max}자 이내",
+  min: "{min} 이상",
+  max: "{max} 이하",
+  tooFew: "{min}개 이상",
+  tooMany: "{max}개 이하",
+  invalidType: "형식 오류",
+  invalidOption: "허용되지 않는 값",
+  invalidFormat: "형식 확인",
+  invalid: "입력 확인",
+};

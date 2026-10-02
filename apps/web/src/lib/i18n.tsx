@@ -1,5 +1,5 @@
 // 다국어 — 현재 언어는 모듈 상태(localStorage "wyd-lang")로 두고, 컴포넌트는 useT()로 구독한다.
-// React 밖(토스트·api.ts·CSV 등)에서는 getLocale()/tt()를 쓴다.
+// React 밖(토스트·api.ts·CSV 등)에서는 getLocale()/tt()를 쓴다. ko 외 언어 사전은 고를 때 따로 받는다.
 import { useSyncExternalStore } from "react";
 import {
   enumLabel,
@@ -7,6 +7,7 @@ import {
   fmtNum,
   fmtWeekday,
   isLocale,
+  loadLocale,
   resolveLocale,
   translate,
   translateDynamic,
@@ -31,9 +32,27 @@ let current: Locale = initial();
 const listeners = new Set<() => void>();
 document.documentElement.lang = current;
 
+/** 첫 화면 전 저장된 언어 사전 받기(main.tsx가 기다림). 실패하면 이번 접속은 ko로(저장값은 그대로 — 다음 접속에 다시 시도) */
+export const i18nReady: Promise<void> = loadLocale(current).catch(() => {
+  current = "ko";
+  document.documentElement.lang = current;
+});
+
 export const getLocale = () => current;
-export function setLocale(l: Locale) {
-  if (l === current) return;
+let pending: Locale | undefined;
+/** 사전을 받은 뒤 전환. 받는 중 다른 언어를 고르면 마지막 선택만 반영. 사전을 받지 못하면 현재 언어 유지하고 false */
+export async function setLocale(l: Locale): Promise<boolean> {
+  pending = l;
+  try {
+    await loadLocale(l);
+  } catch {
+    if (pending !== l) return true; // 이미 다른 언어를 고름 — 밀려난 요청의 실패는 알리지 않음
+    pending = undefined;
+    return false;
+  }
+  if (pending !== l) return true;
+  pending = undefined;
+  if (l === current) return true;
   current = l;
   document.documentElement.lang = l;
   try {
@@ -42,6 +61,7 @@ export function setLocale(l: Locale) {
     /* 무시 */
   }
   listeners.forEach((fn) => fn());
+  return true;
 }
 const subscribe = (fn: () => void) => {
   listeners.add(fn);

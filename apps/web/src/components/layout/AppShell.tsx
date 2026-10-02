@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect, useState, type ReactNode } from "react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router";
 import { Dialog as D } from "radix-ui";
+import { toast } from "sonner";
 import {
   Check,
   Languages,
@@ -23,7 +24,7 @@ import { useAuth } from "@/lib/auth";
 import { useT } from "@/lib/i18n";
 import { useTheme } from "@/lib/theme";
 import { cn, daysBetween } from "@/lib/utils";
-import { todayKST, translate, type MsgKey } from "@wyd/shared";
+import { navLabelEn, todayKST, type MsgKey } from "@wyd/shared";
 import { Menu, MenuItem, MenuLabel, MenuSep } from "@/components/ui/menu";
 import { Button } from "@/components/ui/button";
 import { LoginDialog } from "./LoginDialog";
@@ -157,7 +158,11 @@ function LangButton() {
     >
       <MenuLabel>{t("shell.langTitle")}</MenuLabel>
       {LOCALES.map((l) => (
-        <MenuItem key={l} icon={l === locale ? <Check /> : <span className="size-4" />} onSelect={() => setLocale(l)}>
+        <MenuItem
+          key={l}
+          icon={l === locale ? <Check /> : <span className="size-4" />}
+          onSelect={() => void setLocale(l).then((ok) => ok || toast.error(t("shell.langLoadFailed")))}
+        >
           <span lang={l}>{LOCALE_NAMES[l]}</span>
         </MenuItem>
       ))}
@@ -284,7 +289,7 @@ export function AppShell() {
           </div>
           <div className="hidden min-w-0 lg:block">
             <div className="text-[15px] font-semibold text-ink">{current && t(current.label)}</div>
-            {locale !== "en" && current && <div className="text-[11.5px] text-ink-3">{translate("en", current.label)}</div>}
+            {locale !== "en" && current && <div className="text-[11.5px] text-ink-3">{navLabelEn(current.label)}</div>}
           </div>
           <div className="flex-1" />
           <button

@@ -33,13 +33,8 @@ export function resolveLocale(accept?: string | null): Locale {
   return DEFAULT_LOCALE;
 }
 
-/** 원본(ko) 사전과 같은 모양. 다른 언어는 복수형 변형 키(`x_one` 등)를 추가로 둘 수 있다 */
+/** 원본(ko) 사전과 같은 모양 — 다른 언어 사전은 `satisfies Shape<typeof ko>`(키 누락은 컴파일 오류). 복수형 변형 키(`x_one` 등)는 추가로 둘 수 있다 */
 export type Shape<T> = { [K in keyof T]: T[K] extends string ? string : Shape<T[K]> } & { [extra: string]: unknown };
-
-/** 한 네임스페이스의 5개 언어 사전 정의 — 다른 언어의 키 누락은 컴파일 오류 */
-export function defineMessages<const T extends Record<string, unknown>>(ko: T, others: Record<Exclude<Locale, "ko">, Shape<T>>) {
-  return { ko, ...others } as Record<Locale, T>;
-}
 
 export type Params = Record<string, string | number | null | undefined>;
 
@@ -59,8 +54,8 @@ function pluralOf(locale: Locale, n: number): string {
   return pr.select(n);
 }
 
-/** {name} 보간. params.n이 숫자면 `key_one`/`key_other` 등 복수형 변형을 우선 사용 */
-export function format(dicts: Record<Locale, unknown>, locale: Locale, key: string, params?: Params): string {
+/** {name} 보간. params.n이 숫자면 `key_one`/`key_other` 등 복수형 변형을 우선 사용. 아직 없는(받지 않은) 언어는 ko로 */
+export function format(dicts: Partial<Record<Locale, unknown>>, locale: Locale, key: string, params?: Params): string {
   const dict = dicts[locale] ?? dicts[DEFAULT_LOCALE];
   let s: string | undefined;
   if (params && typeof params.n === "number") s = lookup(dict, `${key}_${pluralOf(locale, params.n)}`);

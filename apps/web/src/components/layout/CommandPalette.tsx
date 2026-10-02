@@ -7,7 +7,7 @@ import { NAV_ITEMS } from "@/lib/nav";
 import { useTable } from "@/lib/data";
 import { useAuth } from "@/lib/auth";
 import { useT } from "@/lib/i18n";
-import { translate } from "@wyd/shared";
+import { navLabelEn, translate } from "@wyd/shared";
 
 /** ⌘K — 메뉴 이동 + 방문자(P번호·이름)·홈스테이(H번호·대표자)·봉사자 검색 */
 export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
@@ -66,12 +66,12 @@ export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenCh
                 {NAV_ITEMS.filter(
                   (i) =>
                     (!i.roles || (user && i.roles.includes(user.role))) &&
-                    (!term || `${t(i.label)} ${translate("ko", i.label)} ${translate("en", i.label)}`.toLowerCase().includes(term)),
+                    (!term || `${t(i.label)} ${translate("ko", i.label)} ${navLabelEn(i.label)}`.toLowerCase().includes(term)),
                 ).map((i) => (
                   <Command.Item key={i.path} value={"nav:" + i.path} onSelect={() => go(i.path)} className={item}>
                     <i.icon />
                     {t(i.label)}
-                    {locale !== "en" && <span className="ml-auto text-[12px] text-ink-3">{translate("en", i.label)}</span>}
+                    {locale !== "en" && <span className="ml-auto text-[12px] text-ink-3">{navLabelEn(i.label)}</span>}
                   </Command.Item>
                 ))}
               </Command.Group>

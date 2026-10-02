@@ -1,8 +1,12 @@
 // 입력 검증(zod) — API DTO 검증과 프론트 폼 검증에서 공용
 import { z } from "zod";
 import { toStr } from "./text.js";
-import { LOCALES } from "./i18n/core.js";
-import { MESSAGES } from "./i18n/index.js";
+// 성별 라벨만 필요하므로 언어별 enums 사전만 직접 가져온다(전체 사전 지연 로딩과 무관하게 항상 인식)
+import { enums as enumsKo } from "./i18n/messages/ko/enums.js";
+import { enums as enumsEn } from "./i18n/messages/en/enums.js";
+import { enums as enumsEs } from "./i18n/messages/es/enums.js";
+import { enums as enumsPt } from "./i18n/messages/pt/enums.js";
+import { enums as enumsFr } from "./i18n/messages/fr/enums.js";
 
 const str = (max = 2000) => z.string().trim().max(max).default("");
 const optNum = z
@@ -29,7 +33,7 @@ export function normSex(v: unknown): string {
 }
 /** 화면·CSV에 나간 다국어 성별 라벨(Femme, Mujer…) → 저장값. 외국어로 내보낸 명단을 다시 붙여넣어도 성별 유지 */
 const SEX_BY_LABEL = new Map(
-  LOCALES.flatMap((l) => (["남", "여"] as const).map((k) => [MESSAGES[l].enums.sex[k].toLowerCase(), k] as const)),
+  [enumsKo, enumsEn, enumsEs, enumsPt, enumsFr].flatMap((e) => (["남", "여"] as const).map((k) => [e.sex[k].toLowerCase(), k] as const)),
 );
 
 export const schemas = {

@@ -11,7 +11,7 @@ import {
   teamOf,
   teamRange,
   todayKST,
-  translate,
+  navLabelEn,
   type Dataset,
   type Volunteer,
 } from "@wyd/shared";
@@ -231,7 +231,7 @@ function NavCard({ item, i, locked, onClick }: { item: NavItem; i: Info | null; 
         </span>
         <span className="min-w-0 flex-1">
           <span className="block truncate text-[14.5px] font-semibold text-ink">{t(item.label)}</span>
-          {locale !== "en" && <span className="block truncate text-[11.5px] text-ink-3">{translate("en", item.label)}</span>}
+          {locale !== "en" && <span className="block truncate text-[11.5px] text-ink-3">{navLabelEn(item.label)}</span>}
         </span>
         {locked ? (
           <span className="inline-flex items-center gap-1 rounded-full bg-surface-3 px-2 py-0.5 text-[11.5px] font-medium text-ink-3">

@@ -49,7 +49,7 @@ npm run format         # Prettier 적용
 | G-06 🤖 | `==` 금지(`eqeqeq`, `== null`만 허용). 타입 import는 `import { type X }` |
 | G-07 | 사용자에게 보이는 메시지는 **다국어 사전 키**로 작성(G-09). ko 원문은 한국어 존댓말, 원인 + 해결 방법("…입니다. …하세요.") |
 | G-08 | 매직 넘버·문자열(상태값 "확정", 성별 "남/여" 등)은 shared 스키마의 enum과 일치시킬 것. 저장값은 한국어 그대로 두고 화면에는 `label(group, value)`(사전 `enums.*`)로 표시 |
-| G-09 | **다국어(ko·en·es·pt·fr)**: 화면·API 오류 문구를 코드에 하드코딩하지 않는다. 사전은 `packages/shared/src/i18n/messages/<네임스페이스>.ts`에 5개 언어를 함께 두고(`defineMessages` — 언어별 키 누락은 `tsc` 오류), 웹은 `useT()`의 `t("ns.key", { n })`, React 밖은 `tt()`, API는 `ApiError`의 msgKey(응답 시 `Accept-Language`로 번역). 문장 조각 이어붙이기·`을(를)` 대신 `{param}` 보간, 개수는 `key_one`/`key_other` 복수형. 콘텐츠 원문(G-04)·사용자 입력·운영자 CLI는 번역 대상 아님 |
+| G-09 | **다국어(ko·en·es·pt·fr)**: 화면·API 오류 문구를 코드에 하드코딩하지 않는다. 사전은 `packages/shared/src/i18n/messages/<언어>/<네임스페이스>.ts`에 언어별로 두고(ko가 원본, 다른 언어는 `satisfies Shape<typeof ko>` — 키 누락은 `tsc` 오류, 새 네임스페이스는 각 언어 `index.ts`에 등록), ko 외 언어는 `loadLocale()`로 받는다(웹은 언어 고를 때 별도 청크, API는 기동 시 `loadAllLocales()`). 웹은 `useT()`의 `t("ns.key", { n })`, React 밖은 `tt()`, API는 `ApiError`의 msgKey(응답 시 `Accept-Language`로 번역). 문장 조각 이어붙이기·`을(를)` 대신 `{param}` 보간, 개수는 `key_one`/`key_other` 복수형. 콘텐츠 원문(G-04)·사용자 입력·운영자 CLI는 번역 대상 아님 |
 
 ## API — `apps/api`
 
