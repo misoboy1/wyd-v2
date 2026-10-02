@@ -278,7 +278,7 @@ export function AppShell() {
         </div>
       </aside>
 
-      {/* 상단 바 */}
+      {/* 상단 바 — 높이(h-14/sm:h-16)를 바꾸면 App.tsx Toaster offset도 함께 수정 */}
       <header className="no-print sticky top-0 z-20 border-b border-line bg-surface/85 backdrop-blur-md lg:pl-64">
         <div className="flex h-14 items-center gap-2 px-3 sm:h-16 sm:px-5">
           <Button variant="ghost" size="icon" className="lg:hidden" aria-label={t("shell.menu")} onClick={() => setDrawer(true)}>

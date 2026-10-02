@@ -177,7 +177,15 @@ export function App() {
           <ConflictDialog />
           <ConfirmHost />
         </BrowserRouter>
-        <Toaster position="top-center" richColors closeButton toastOptions={{ style: { fontFamily: "inherit" } }} />
+        {/* 토스트는 상단 바(모바일 h-14, sm 이상 h-16) 아래에 — 위에 뜨면 GNB 버튼을 덮고, 터치하면 타이머가 멈춰 계속 막힘 */}
+        <Toaster
+          position="top-center"
+          offset={{ top: 76 }}
+          mobileOffset={{ top: 64 }}
+          richColors
+          closeButton
+          toastOptions={{ style: { fontFamily: "inherit" } }}
+        />
       </AuthProvider>
     </QueryClientProvider>
   );
