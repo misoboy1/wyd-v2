@@ -35,6 +35,7 @@ export const err = {
     prep: "Préparation J-J",
     notices: "Annonces",
     posts: "Publications",
+    postComments: "Commentaires",
     qna: "Questions",
     places: "Lieux",
     gori: "Chaîne de prière",

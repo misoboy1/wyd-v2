@@ -119,7 +119,9 @@ export class TablesService {
   }
   async remove(name: TableName, id: number, version: number | undefined, user?: AuthUser) {
     const r = await this.tx((tx) => this.removeIn(tx, name, id, version, user));
-    this.events.emit(r.cleared ? [name, "visitors"] : [name], user?.id);
+    // 가정·시설 삭제 → 배정 해제된 방문자, 글 삭제 → 함께 지워진 댓글(cascade)도 새로고침
+    const also: TableName[] = r.cleared ? ["visitors"] : name === "posts" ? ["postComments"] : [];
+    this.events.emit([name, ...also], user?.id);
     return r;
   }
 
@@ -208,9 +210,16 @@ export class TablesService {
       await checkVisitorStay(tx, null, values as any);
     }
     if (name === "homestays") values.hid = await this.ensureCode(tx, "homestays", values.hid);
-    if (name === "posts") {
+    if (name === "posts" || name === "postComments") {
       values.authorId = user?.id ?? null;
       if (!values.author) values.author = user?.name || "";
+    }
+    if (name === "postComments") {
+      // 댓글 작성자 이름은 로그인 계정으로 고정(게시글과 달리 직접 입력 없음 — 이름 사칭 방지)
+      values.author = user?.name || "";
+      // 없는 글에 단 댓글은 FK 오류(500) 대신 404로. key share 잠금: 확인 직후 글이 삭제되는 경쟁 방지
+      const [post] = await tx.select({ id: S.posts.id }).from(S.posts).where(eq(S.posts.id, values.postId)).for("key share").limit(1);
+      if (!post) throw NotFound("err.table.posts");
     }
     const [row] = (await tx
       .insert(def.table as any)
@@ -233,6 +242,8 @@ export class TablesService {
     }
     const curSlots = name === "schedule" ? (await this.attachSlots([cur], tx))[0].slots : undefined;
     const merged = parse(def, { ...pickSchemaKeys(def, { ...cur, slots: curSlots }), ...pickSchemaKeys(def, patch) });
+    // 댓글은 다른 글로 옮기거나 작성자 이름을 바꿀 수 없음
+    if (name === "postComments") Object.assign(merged, { postId: cur.postId, author: cur.author });
     if (!canWrite(def, user, cur, merged)) throw Forbidden("err.forbiddenUpdate", { table: tr(def.label) });
     const { slots, ...values } = merged;
     if (name === "visitors") {

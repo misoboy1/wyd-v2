@@ -103,6 +103,7 @@ async function main() {
     if (REPLACE) {
       // TRUNCATE … CASCADE는 users(homestay_id FK)까지 비우므로 쓰지 않음 → 의존 순서대로 DELETE 후 id 시퀀스 초기화
       const order = [
+        "post_comments",
         "visitors",
         "volunteers",
         "schedule_slots",

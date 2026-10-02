@@ -160,6 +160,44 @@ try {
   }
   const deptNotice = await call("POST", "/t/notices", { title: "x" }, { cookie: deptC });
   ok(deptNotice.status === 403, "dept: 공지 작성 거부", deptNotice.body);
+
+  // 8-1) 게시글 댓글: 로그인 사용자 작성, 수정·삭제는 본인(또는 관리자)만, 글 삭제 시 함께 삭제
+  const post = (await call("POST", "/t/posts", { title: "smoke 댓글 글", body: "x" })).body;
+  const cAdmin = await call("POST", "/t/postComments", { postId: post.id, body: "관리자 댓글", authorId: 999, author: "가짜 이름" });
+  ok(
+    cAdmin.status === 201 && cAdmin.body.authorId === login.body?.user?.id && cAdmin.body.author === login.body?.user?.name,
+    "댓글 작성 + authorId·작성자 이름은 서버가 설정(위조 무시)",
+    cAdmin.body,
+  );
+  const cNoPost = await call("POST", "/t/postComments", { postId: 2147483647, body: "x" });
+  ok(cNoPost.status === 404, "없는 글에 댓글 → 404", cNoPost.body);
+  const cAnon = await call("POST", "/t/postComments", { postId: post.id, body: "x" }, { cookie: "" });
+  ok(cAnon.status === 401, "비로그인 댓글 작성 거부", cAnon.body);
+  const cDeptEdit = await call(
+    "PATCH",
+    `/t/postComments/${cAdmin.body.id}`,
+    { version: cAdmin.body.version, body: "y" },
+    { cookie: deptC },
+  );
+  ok(cDeptEdit.status === 403, "dept: 남의 댓글 수정 → 403", cDeptEdit.body);
+  const cDept = await call("POST", "/t/postComments", { postId: post.id, body: "dept 댓글" }, { cookie: deptC });
+  ok(cDept.status === 201 && cDept.body.authorId === deptU.id, "dept: 댓글 작성", cDept.body);
+  const cMove = await call(
+    "PATCH",
+    `/t/postComments/${cDept.body.id}`,
+    { version: cDept.body.version, postId: 1, body: "수정" },
+    { cookie: deptC },
+  );
+  ok(
+    cMove.status === 200 && cMove.body.postId === post.id && cMove.body.body === "수정",
+    "dept: 본인 댓글 수정(다른 글로 이동 불가)",
+    cMove.body,
+  );
+  const cDeptDel = await call("DELETE", `/t/postComments/${cDept.body.id}?version=${cMove.body.version}`, undefined, { cookie: deptC });
+  ok(cDeptDel.status === 200, "dept: 본인 댓글 삭제", cDeptDel.body);
+  await call("DELETE", `/t/posts/${post.id}?version=${post.version}`);
+  const left = (await call("GET", "/t/postComments")).body.filter((c) => c.postId === post.id);
+  ok(left.length === 0, "글 삭제 → 댓글도 함께 삭제", left);
 } finally {
   for (const u of temp) if (u?.id) await call("DELETE", `/users/${u.id}`);
 }

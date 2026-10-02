@@ -1,6 +1,6 @@
 import { useMemo, useState, type ReactNode } from "react";
 import { X } from "lucide-react";
-import { hasMessage, SCHEMA, TEAM_NAMES, type EnumGroup } from "@wyd/shared";
+import { hasMessage, SCHEMA, TEAM_NAMES, type EnumGroup, type TableName } from "@wyd/shared";
 import { Field, Input, Select, Textarea } from "@/components/ui/input";
 import { useTable } from "@/lib/data";
 import { cn } from "@/lib/utils";
@@ -16,8 +16,8 @@ export interface FieldDef {
 }
 type Values = Record<string, any>;
 
-/** 기존 SCHEMA(index.html) 필드 정의 → 폼. key 필드 이름 변환(dept→deptId) 포함 */
-export function schemaFields(table: keyof typeof SCHEMA): FieldDef[] {
+/** 기존 SCHEMA(index.html) 필드 정의 → 폼(SCHEMA에 없는 표는 빈 목록). key 필드 이름 변환(dept→deptId) 포함 */
+export function schemaFields(table: TableName): FieldDef[] {
   return ((SCHEMA as any)[table]?.fields ?? []) as FieldDef[];
 }
 

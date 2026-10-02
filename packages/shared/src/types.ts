@@ -119,6 +119,12 @@ export interface Post extends Base {
   author: string;
   authorId?: number | null;
 }
+export interface PostComment extends Base {
+  postId: number;
+  body: string;
+  author: string;
+  authorId?: number | null;
+}
 export interface Qna extends Base {
   date: string;
   author: string;
@@ -176,6 +182,7 @@ export interface Dataset {
   prep: PrepStep[];
   notices: Notice[];
   posts: Post[];
+  postComments: PostComment[];
   qna: Qna[];
   places: Place[];
   gori: Gori[];
@@ -192,6 +199,7 @@ export const TABLE_NAMES: TableName[] = [
   "prep",
   "notices",
   "posts",
+  "postComments",
   "qna",
   "places",
   "gori",

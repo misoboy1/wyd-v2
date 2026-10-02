@@ -8,6 +8,7 @@ export const valid = {
   hostRequired: "host name is required",
   nameRequired: "name is required",
   questionRequired: "question is required",
+  commentRequired: "comment is required",
   dateFormat: "must be in YYYY-MM-DD format",
   usernameChars: "username may only contain letters, digits and ._@-",
   passwordMin: "password must be at least 8 characters",

@@ -5,6 +5,7 @@ export const valid = {
   hostRequired: "대표자 필수",
   nameRequired: "이름 필수",
   questionRequired: "질문 내용 필수",
+  commentRequired: "댓글 내용 필수",
   dateFormat: "YYYY-MM-DD 형식",
   usernameChars: "아이디는 영문·숫자·._@- 만",
   passwordMin: "비밀번호는 8자 이상",

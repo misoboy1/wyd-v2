@@ -29,6 +29,18 @@ export const board = {
     firstPost: "Be the first to post.",
     ownHint: "Only you and admins can edit or delete your post.",
   },
+  comments: {
+    count: "Comments {n}",
+    toggleAria: "Show or hide {n} comments",
+    toggleAria_one: "Show or hide {n} comment",
+    placeholder: "Write a comment.",
+    inputLabel: "Comment",
+    submit: "Post",
+    empty: "No comments yet. Be the first to comment.",
+    limitHint: "Up to 1,000 characters.",
+    rowLabel: "Comment by {author}",
+    editLabel: "Edit comment",
+  },
   qna: {
     title: "Pilgrim Q&A",
     subtitle: "Pilgrims ask → the parish answers · Anyone can ask; admins reply",

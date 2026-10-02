@@ -29,6 +29,18 @@ export const board = {
     firstPost: "Soyez le premier à publier.",
     ownHint: "Seuls vous et les administrateurs pouvez modifier ou supprimer votre publication.",
   },
+  comments: {
+    count: "Commentaires {n}",
+    toggleAria: "Afficher ou masquer {n} commentaires",
+    toggleAria_one: "Afficher ou masquer {n} commentaire",
+    placeholder: "Écrivez un commentaire.",
+    inputLabel: "Commentaire",
+    submit: "Publier",
+    empty: "Aucun commentaire pour l’instant. Soyez le premier à commenter.",
+    limitHint: "Jusqu’à 1 000 caractères.",
+    rowLabel: "Commentaire de {author}",
+    editLabel: "Modifier le commentaire",
+  },
   qna: {
     title: "Questions des pèlerins",
     subtitle: "Les pèlerins demandent → la paroisse répond · Tout le monde peut demander ; les administrateurs répondent",

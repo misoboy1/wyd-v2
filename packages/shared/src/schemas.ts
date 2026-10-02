@@ -132,6 +132,11 @@ export const schemas = {
   }),
   notices: z.object({ date: str(20), title: z.string().trim().min(1).max(200), body: str(10000), author: str(100) }),
   posts: z.object({ date: str(20), title: z.string().trim().min(1).max(200), body: str(10000), author: str(100) }),
+  postComments: z.object({
+    postId: z.coerce.number().int().positive(),
+    body: z.string().trim().min(1, "valid.commentRequired").max(1000),
+    author: str(100),
+  }),
   qna: z.object({
     date: str(20),
     author: str(40),

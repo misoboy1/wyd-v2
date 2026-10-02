@@ -193,6 +193,22 @@ export const posts = pgTable("posts", {
   ...audit,
 });
 
+// 게시글 댓글 — 글을 지우면 함께 삭제(cascade)
+export const postComments = pgTable(
+  "post_comments",
+  {
+    id: serial("id").primaryKey(),
+    postId: integer("post_id")
+      .notNull()
+      .references(() => posts.id, { onDelete: "cascade" }),
+    body: t("body"),
+    author: t("author"),
+    authorId: integer("author_id"),
+    ...audit,
+  },
+  (x) => [index("post_comments_post_idx").on(x.postId)],
+);
+
 export const qna = pgTable("qna", {
   id: serial("id").primaryKey(),
   date: t("date"),

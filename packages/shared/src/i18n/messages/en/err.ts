@@ -35,6 +35,7 @@ export const err = {
     prep: "D-DAY prep",
     notices: "Notices",
     posts: "Posts",
+    postComments: "Comments",
     qna: "Q&A",
     places: "Places",
     gori: "Prayer chain",

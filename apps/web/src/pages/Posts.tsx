@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
-import { MessagesSquare, Plus } from "lucide-react";
-import type { Post } from "@wyd/shared";
+import { ChevronDown, MessageCircle, MessagesSquare, Plus } from "lucide-react";
+import type { Post, PostComment } from "@wyd/shared";
 import { todayKST } from "@wyd/shared";
 import { Empty, PageHeader, Segmented, Skeleton } from "@/components/ui/misc";
 import { Badge } from "@/components/ui/badge";
@@ -9,19 +9,33 @@ import { SearchInput } from "@/components/ui/input";
 import { EditDialog } from "@/components/form/EditDialog";
 import { BoardCard, newestFirst } from "@/components/board/BoardCard";
 import { RowActions } from "@/components/board/RowActions";
+import { Comments } from "@/components/board/Comments";
 import { useTable } from "@/lib/data";
 import { useCan } from "@/lib/auth";
-import { matchQuery } from "@/lib/utils";
+import { cn, matchQuery } from "@/lib/utils";
 import { useT } from "@/lib/i18n";
 
 /** 게시판 — 로그인 사용자는 누구나 글쓰기, 수정·삭제는 작성자 본인 또는 관리자 */
 export default function Posts() {
   const { rows, isLoading } = useTable("posts");
+  const { rows: comments } = useTable("postComments");
   const { t } = useT();
   const { user, loggedIn, canWrite } = useCan();
   const [q, setQ] = useState("");
   const [mine, setMine] = useState<"all" | "mine">("all");
   const [edit, setEdit] = useState<{ row?: Post | null } | null>(null);
+  const [open, setOpen] = useState<Set<number>>(() => new Set());
+  const byPost = useMemo(() => {
+    const m = new Map<number, PostComment[]>();
+    for (const c of comments) m.set(c.postId, [...(m.get(c.postId) ?? []), c]);
+    return m;
+  }, [comments]);
+  const toggle = (id: number) =>
+    setOpen((s) => {
+      const n = new Set(s);
+      if (!n.delete(id)) n.add(id);
+      return n;
+    });
   const list = useMemo(
     () =>
       rows.filter((p) => (mine === "all" || p.authorId === user?.id) && matchQuery(q, p.title, p.body, p.author, p.date)).sort(newestFirst),
@@ -67,6 +81,8 @@ export default function Posts() {
         <div className="flex flex-col gap-3">
           {list.map((p) => {
             const own = !!user && p.authorId === user.id;
+            const cs = byPost.get(p.id) ?? [];
+            const shown = open.has(p.id);
             return (
               <BoardCard
                 key={p.id}
@@ -76,7 +92,20 @@ export default function Posts() {
                 body={p.body}
                 badges={own ? <Badge tone="blue">{t("board.posts.mine")}</Badge> : undefined}
                 actions={canWrite("posts", p) && <RowActions table="posts" row={p} label={p.title} onEdit={() => setEdit({ row: p })} />}
-              />
+              >
+                <button
+                  type="button"
+                  className="mt-3 inline-flex items-center gap-1 rounded-md text-[13px] text-ink-3 hover:text-ink"
+                  aria-expanded={shown}
+                  aria-label={t("board.comments.toggleAria", { n: cs.length })}
+                  onClick={() => toggle(p.id)}
+                >
+                  <MessageCircle className="size-3.5" />
+                  {t("board.comments.count", { n: cs.length })}
+                  <ChevronDown className={cn("size-3.5 transition-transform", shown && "rotate-180")} />
+                </button>
+                {shown && <Comments postId={p.id} comments={cs} />}
+              </BoardCard>
             );
           })}
         </div>

@@ -26,6 +26,17 @@ export const board = {
     firstPost: "첫 글을 남겨 보세요.",
     ownHint: "작성한 글은 본인과 관리자만 수정·삭제할 수 있습니다.",
   },
+  comments: {
+    count: "댓글 {n}",
+    toggleAria: "댓글 {n}개 보기·숨기기",
+    placeholder: "댓글을 입력하세요.",
+    inputLabel: "댓글 입력",
+    submit: "등록",
+    empty: "아직 댓글이 없습니다. 첫 댓글을 남겨 보세요.",
+    limitHint: "1,000자까지 입력할 수 있습니다.",
+    rowLabel: "{author} 댓글",
+    editLabel: "댓글 수정",
+  },
   qna: {
     title: "방문자 Q&A",
     subtitle: "순례자 질문 → 본당 답변 · 질문은 누구나, 답변은 관리자",

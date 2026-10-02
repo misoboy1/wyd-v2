@@ -34,6 +34,7 @@ export const err = {
     prep: "D-DAY 준비",
     notices: "공지",
     posts: "게시글",
+    postComments: "댓글",
     qna: "Q&A",
     places: "장소",
     gori: "고리기도",

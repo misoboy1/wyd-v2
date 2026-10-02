@@ -76,6 +76,15 @@ export const REGISTRY: Record<TableName, TableDef> = {
     // 로그인 사용자는 글쓰기, 수정·삭제는 본인 글만
     canWrite: (u, b) => !b || b.authorId === u.id,
   },
+  postComments: {
+    table: S.postComments,
+    schema: schemas.postComments,
+    read: "auth",
+    order: ["postId", "id"],
+    label: "err.table.postComments",
+    // 게시글과 같은 규칙: 로그인 사용자는 댓글 작성, 수정·삭제는 본인 댓글만
+    canWrite: (u, b) => !b || b.authorId === u.id,
+  },
   qna: { table: S.qna, schema: schemas.qna, read: "public", order: ["date", "id"], label: "err.table.qna" },
   places: { table: S.places, schema: schemas.places, read: "public", order: ["sort", "id"], label: "err.table.places" },
   gori: { table: S.gori, schema: schemas.gori, read: "public", order: ["date"], label: "err.table.gori" },
