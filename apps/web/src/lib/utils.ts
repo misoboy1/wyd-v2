@@ -8,6 +8,12 @@ export const num = (n: number | null | undefined) => (n == null ? "—" : fmtNum
 const KO = new Intl.Collator("ko", { numeric: true, sensitivity: "base" });
 /** 한국어 + 숫자 자연 정렬 (P9 < P10 < P1000) */
 export const cmp = (a: unknown, b: unknown) => KO.compare(toStr(a), toStr(b));
+/** 정렬 키를 행마다 한 번만 구해 정렬(비교마다 번역·라벨 계산을 반복하지 않게). rows를 제자리 정렬 */
+export function sortBy<T>(rows: T[], key: (r: T) => unknown, dir = 1): T[] {
+  const k = new Map<T, string>();
+  for (const r of rows) k.set(r, toStr(key(r)));
+  return rows.sort((a, b) => KO.compare(k.get(a)!, k.get(b)!) * dir);
+}
 /** 띄어쓰기로 여러 조건(AND) 검색 */
 export function matchQuery(q: string, ...fields: unknown[]): boolean {
   const terms = q.trim().toLowerCase().split(/\s+/).filter(Boolean);

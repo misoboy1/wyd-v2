@@ -89,6 +89,19 @@ ok(q.status === 201 && q.body.a === "" && q.body.answered === false, "공개 질
 const anonW = await call("POST", "/t/notices", { title: "x" }, { cookie: "" });
 ok(anonW.status === 401, "비로그인 공지 작성 거부", anonW.body);
 
+// 7-1) 조회 ETag — 내용이 같으면 304(본문 없음), 응답은 사용자별(private)
+const head = (path, headers = {}) => fetch(A + path, { headers: { cookie, ...headers } });
+const n1 = await head("/t/notices");
+const etag = n1.headers.get("etag");
+ok(!!etag && n1.headers.get("cache-control") === "private, no-cache", "표 조회에 ETag + Cache-Control: private, no-cache", {
+  etag,
+  cc: n1.headers.get("cache-control"),
+});
+const n2 = await head("/t/notices", { "if-none-match": etag });
+ok(n2.status === 304 && (await n2.text()) === "", "같은 ETag로 재요청 → 304 빈 본문", n2.status);
+const [dAdmin, dAnon] = await Promise.all([head("/data"), fetch(A + "/data")]);
+ok(dAdmin.headers.get("etag") !== dAnon.headers.get("etag"), "로그인/비로그인 /data ETag가 서로 다름(사용자별 응답)");
+
 // 8) 역할별 권한 (TEST-02) — host·dept 임시 계정. 계정은 중간에 실패해도 finally에서 삭제
 const hs = (await call("GET", "/t/homestays")).body;
 const [myHs, otherHs] = [hs[0], hs[1]];

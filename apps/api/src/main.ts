@@ -8,6 +8,7 @@ import path from "node:path";
 import { mkdirSync } from "node:fs";
 import { AppModule } from "./app.module.js";
 import { env } from "./common/env.js";
+import { registerEtag } from "./common/etag.js";
 import { runMigrations } from "./db/migrate.js";
 import { ensureBootstrap } from "./cli/bootstrap.js";
 
@@ -25,6 +26,7 @@ async function main() {
   await app.register(cookie as any);
   await app.register(helmet, { contentSecurityPolicy: false }); // CSP는 nginx에서 (정적 페이지 기준)
   await app.register(multipart as any);
+  registerEtag(app.getHttpAdapter().getInstance());
   // 개발 모드: 업로드 파일 직접 서빙(운영에서는 nginx가 /uploads/ 서빙)
   if (!env.isProd) {
     const root = path.resolve(env.UPLOAD_DIR);

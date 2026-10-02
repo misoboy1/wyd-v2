@@ -14,7 +14,7 @@ import { PasteImport, type PasteDef } from "@/components/form/PasteImport";
 import { useCan } from "@/lib/auth";
 import { downloadCSV } from "@/lib/csv";
 import { printDocument } from "@/lib/print";
-import { cmp, matchQuery } from "@/lib/utils";
+import { cmp, matchQuery, sortBy } from "@/lib/utils";
 import { useT } from "@/lib/i18n";
 import { useStayIndex } from "@/components/stay/useStayIndex";
 import { VisitorEditDialog } from "@/components/stay/VisitorEditDialog";
@@ -155,17 +155,17 @@ export default function Visitors() {
         (hsId == null || v.homestayId === hsId) &&
         matchQuery(dq, hay.get(v.id)),
     );
-    const val = (v: Visitor) => (sort.key === "room" ? stayText(v, I, tr) : (v as any)[sort.key]);
-    return list.sort((a, b) => cmp(val(a), val(b)) * sort.dir);
+    return sortBy(list, (v) => (sort.key === "room" ? stayText(v, I, tr) : (v as any)[sort.key]), sort.dir);
   }, [visitors, I, kind, zone, roomId, hsId, dq, hay, sort, tr]);
 
   // 묶어보기: 필터 결과 전체 기준으로 묶음 순서·인원을 구하고, 현재 쪽만 소제목과 함께 표시
   const keyOf = useCallback((v: Visitor, by: string) => visGroupKey(v, by as VisGroupBy, I, tr), [I, tr]);
   const grouped = useMemo(() => {
     if (group === "none") return null;
-    const { order, count } = groupOrder(sorted, (v) => keyOf(v, group));
+    const keys = new Map(sorted.map((v) => [v, keyOf(v, group)]));
+    const { order, count } = groupOrder(sorted, (v) => keys.get(v)!);
     const rank = new Map(order.map((k, i) => [k, i]));
-    const ordered = sorted.slice().sort((a, b) => rank.get(keyOf(a, group))! - rank.get(keyOf(b, group))!);
+    const ordered = sorted.slice().sort((a, b) => rank.get(keys.get(a)!)! - rank.get(keys.get(b)!)!);
     return { ordered, count };
   }, [sorted, group, keyOf]);
   const list = grouped?.ordered ?? sorted;
@@ -177,20 +177,24 @@ export default function Visitors() {
     visitors.forEach((x) => lang.set(x.lang || "", (lang.get(x.lang || "") || 0) + 1));
     return { langs: [...lang].sort((a, b) => b[1] - a[1]), countries: new Set(visitors.map((x) => x.country).filter(Boolean)).size };
   }, [visitors]);
-  const allSortedByPid = useMemo(() => visitors.slice().sort((a, b) => cmp(a.pid, b.pid)), [visitors]);
+  const allSortedByPid = useMemo(() => sortBy(visitors.slice(), (v) => v.pid), [visitors]);
   const cols = useMemo(() => visitorCols(I, tr), [I, tr]);
-  const printRowsAll = useMemo(() => sortedAll(visitors, sort, I, tr), [visitors, sort, I, tr]);
+  // 선택 인쇄 창이 열렸을 때만 정렬
+  const printRowsAll = useMemo(() => (printOpen ? sortedAll(visitors, sort, I, tr) : []), [printOpen, visitors, sort, I, tr]);
   const paste = useMemo(() => pasteDef(tr), [tr]);
   const groupLabel = group !== "none" ? t(VIS_GROUP_LABEL[group]) : "";
 
+  // 콜백을 고정해야 열 정의(useMemo)가 매 렌더마다 다시 만들어지지 않음
+  const onEdit = useCallback((row: Visitor) => setEdit({ row }), []);
+  const onHs = useCallback((id: number) => void navigate(`/homestays?focus=${id}&from=visitors`), [navigate]);
   const columns = useVisitorColumns({
     I,
     sort,
     setSort,
     editable,
-    onEdit: (row) => setEdit({ row }),
+    onEdit,
     onRoom: setRoomView,
-    onHs: (id) => void navigate(`/homestays?focus=${id}&from=visitors`),
+    onHs,
   });
 
   const exportCsv = (rows: Visitor[], suffix = "") =>
@@ -493,8 +497,7 @@ export default function Visitors() {
 
 /** 화면 정렬 기준의 전체 방문자(선택 인쇄용 — 필터 무관) */
 function sortedAll(visitors: Visitor[], sort: SortState<SortKey>, I: StayIndex, tr: Tr) {
-  const val = (v: Visitor) => (sort.key === "room" ? stayText(v, I, tr) : (v as any)[sort.key]);
-  return visitors.slice().sort((a, b) => cmp(val(a), val(b)) * sort.dir);
+  return sortBy(visitors.slice(), (v) => (sort.key === "room" ? stayText(v, I, tr) : (v as any)[sort.key]), sort.dir);
 }
 /** 연속된 같은 키끼리 묶기(현재 쪽의 묶음 제목) */
 function chunkBy<T>(rows: T[], key: (r: T) => string): [string, T[]][] {

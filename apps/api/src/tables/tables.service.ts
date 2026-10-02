@@ -77,13 +77,11 @@ export class TablesService {
 
   /** 한 번에 여러 표(초기 로딩). 권한 없는 표는 생략 */
   async dataset(names: TableName[], user?: AuthUser) {
+    const allowed = names.filter((n) => REGISTRY[n].read !== "auth" || user);
+    const lists = await Promise.all(allowed.map((n) => this.list(n, user)));
+    // 요청 순서대로 담음 — 끝난 순서대로 담으면 내용이 같아도 응답이 달라져 ETag(304)가 무력화됨
     const res: Record<string, Row[]> = {};
-    await Promise.all(
-      names.map(async (n) => {
-        if (REGISTRY[n].read === "auth" && !user) return;
-        res[n] = await this.list(n, user);
-      }),
-    );
+    allowed.forEach((n, i) => (res[n] = lists[i]));
     return res;
   }
 

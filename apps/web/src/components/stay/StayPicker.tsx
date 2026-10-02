@@ -50,7 +50,9 @@ export function StayPicker({
   const current = cands.find((c) => codeOf(c) === value);
   const isDup = (c: StayCandidate) => c.kind === "hs" && dup.has(String(I.homestayById.get(c.id)?.host || "").trim());
 
+  // 목록은 펼쳤을 때만 구성(닫힌 선택기가 실시간 갱신마다 정렬·분류하지 않게)
   const { sections, nShow, nHit } = useMemo(() => {
+    if (!open) return { sections: [], nShow: 0, nHit: 0 };
     const hit = (c: StayCandidate) => matchQuery(q, c.label, loose(c.label), c.search, c.kind === "hs" ? zoneApt(c.zone) : "");
     const shown = (c: StayCandidate) => (onlyAvail ? c.avail && (c.kind !== "room" || !!c.rr) : true);
     const vis = cands.filter((c) => codeOf(c) === value || (shown(c) && hit(c))).sort((a, b) => cmp(a.label, b.label));
@@ -64,11 +66,13 @@ export function StayPicker({
       .filter((c) => c.kind === "hs")
       .forEach((c) => {
         const z = c.zone || t("stay.picker.noZone");
-        byZone.set(z, [...(byZone.get(z) || []), c]);
+        const list = byZone.get(z);
+        if (list) list.push(c);
+        else byZone.set(z, [c]);
       });
     [...byZone.keys()].sort(cmp).forEach((z) => secs.push({ title: t("stay.picker.secHs", { zone: z }), items: byZone.get(z)! }));
     return { sections: secs, nShow: vis.filter((c) => codeOf(c) !== value).length, nHit: q ? cands.filter(hit).length : cands.length };
-  }, [cands, q, onlyAvail, value, t]);
+  }, [open, cands, q, onlyAvail, value, t]);
 
   const nAvail = cands.filter((c) => c.avail).length;
   const nRoom = cands.filter((c) => c.kind === "room").length;

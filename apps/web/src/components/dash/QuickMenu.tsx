@@ -1,4 +1,5 @@
 // 바로가기(Quick Menu) — 각 화면 요약(배지·요약·항목). 기존 dashNavInfo 이식
+import { useMemo } from "react";
 import { useNavigate } from "react-router";
 import { ChevronRight, Lock } from "lucide-react";
 import {
@@ -277,7 +278,15 @@ export function QuickMenu({ data, T }: { data: Data; T: Totals }) {
   const nav = useNavigate();
   const tr = useT();
   const { t } = tr;
-  const items = NAV_ITEMS.filter((n) => n.path !== "/" && (!n.roles || (user && n.roles.includes(user.role))) && n.path !== "/admin/users");
+  const items = useMemo(
+    () => NAV_ITEMS.filter((n) => n.path !== "/" && (!n.roles || (user && n.roles.includes(user.role))) && n.path !== "/admin/users"),
+    [user],
+  );
+  // 카드 요약은 데이터·언어가 바뀔 때만 계산(정렬·집계 포함)
+  const infos = useMemo(
+    () => new Map(items.filter((n) => !n.auth || user).map((n) => [n.path, info(n.path, data, T, tr)])),
+    [items, user, data, T, tr],
+  );
   return (
     <section aria-labelledby="qm-title">
       <h2 id="qm-title" className="mb-3 text-[16px] font-semibold text-ink">
@@ -291,7 +300,7 @@ export function QuickMenu({ data, T }: { data: Data; T: Totals }) {
               key={n.path}
               item={n}
               locked={locked}
-              i={locked ? null : info(n.path, data, T, tr)}
+              i={locked ? null : infos.get(n.path)!}
               onClick={() => (locked ? setLoginOpen(true) : nav(n.path))}
             />
           );

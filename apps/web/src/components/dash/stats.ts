@@ -1,5 +1,6 @@
 // 대시보드 공통 집계 — 기존 totals() 이식(대시보드·각 화면 수치 일치)
-import { buildStayIndex, hsCaps, isSleepRoom, type Facility, type Homestay, type StayIndex, type Visitor } from "@wyd/shared";
+import { hsCaps, isSleepRoom, type Facility, type Homestay, type StayIndex, type Visitor } from "@wyd/shared";
+import { stayIndexOf } from "@/components/stay/useStayIndex";
 
 export interface Totals {
   I: StayIndex;
@@ -19,7 +20,7 @@ export interface Totals {
 }
 
 export function totals(visitors: Visitor[], facilities: Facility[], homestays: Homestay[]): Totals {
-  const I = buildStayIndex(visitors, facilities, homestays);
+  const I = stayIndexOf(visitors, facilities, homestays); // 화면들과 같은 인덱스 공유(중복 계산 방지)
   // 전체 수용 = 숙박 교리실(점검중 제외) + 홈스테이(퇴실 제외) — 방문자 1,000명은 교리실만으로 수용 불가하므로 합산 기준
   const rooms = facilities.filter((f) => isSleepRoom(f) && f.status !== "점검중");
   const roomCap = rooms.reduce((s, f) => s + (Number(f.cap) || 0), 0);

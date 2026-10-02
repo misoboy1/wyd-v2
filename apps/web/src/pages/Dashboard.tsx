@@ -80,19 +80,34 @@ export default function Dashboard() {
     places = useTable("places");
 
   const T = useMemo(() => totals(visitors.rows, facilities.rows, homestays.rows), [visitors.rows, facilities.rows, homestays.rows]);
-  const data = {
-    visitors: visitors.rows,
-    facilities: facilities.rows,
-    homestays: homestays.rows,
-    volunteers: volunteers.rows,
-    prep: prep.rows,
-    gori: gori.rows,
-    schedule: schedule.rows,
-    notices: notices.rows,
-    posts: posts.rows,
-    qna: qna.rows,
-    places: places.rows,
-  };
+  const data = useMemo(
+    () => ({
+      visitors: visitors.rows,
+      facilities: facilities.rows,
+      homestays: homestays.rows,
+      volunteers: volunteers.rows,
+      prep: prep.rows,
+      gori: gori.rows,
+      schedule: schedule.rows,
+      notices: notices.rows,
+      posts: posts.rows,
+      qna: qna.rows,
+      places: places.rows,
+    }),
+    [
+      visitors.rows,
+      facilities.rows,
+      homestays.rows,
+      volunteers.rows,
+      prep.rows,
+      gori.rows,
+      schedule.rows,
+      notices.rows,
+      posts.rows,
+      qna.rows,
+      places.rows,
+    ],
+  );
   const all = { ...data, departments: departments.rows };
   const stayLoading = visitors.isLoading || facilities.isLoading || homestays.isLoading;
 

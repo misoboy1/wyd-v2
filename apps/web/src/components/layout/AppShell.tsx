@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { lazy, Suspense, useEffect, useState, type ReactNode } from "react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router";
 import { Dialog as D } from "radix-ui";
 import {
@@ -26,9 +26,11 @@ import { cn, daysBetween } from "@/lib/utils";
 import { todayKST, translate, type MsgKey } from "@wyd/shared";
 import { Menu, MenuItem, MenuLabel, MenuSep } from "@/components/ui/menu";
 import { Button } from "@/components/ui/button";
-import { CommandPalette } from "./CommandPalette";
 import { LoginDialog } from "./LoginDialog";
 import { PasswordDialog } from "./PasswordDialog";
+
+// 명령 팔레트(cmdk)는 ⌘K를 처음 누를 때 불러옴 — 첫 번들 절감
+const CommandPalette = lazy(() => import("./CommandPalette").then((m) => ({ default: m.CommandPalette })));
 
 const MOBILE_TAB_LABEL: Record<string, MsgKey> = {
   "/": "shell.mobileTab.dash",
@@ -359,7 +361,11 @@ export function AppShell() {
         </button>
       </nav>
 
-      <CommandPalette open={cmd} onOpenChange={setCmd} />
+      {cmd && (
+        <Suspense fallback={null}>
+          <CommandPalette open={cmd} onOpenChange={setCmd} />
+        </Suspense>
+      )}
       <LoginDialog />
     </div>
   );

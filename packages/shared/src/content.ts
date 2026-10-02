@@ -2277,10 +2277,20 @@ export function parsePeriod(s) {
     b = pts[pts.length - 1];
   return a <= b ? [a, b] : null;
 }
+// 자동 배정은 (방문자 × 숙소)마다 기간을 비교 → 같은 문자열은 한 번만 해석(종류가 적어 캐시가 작음)
+const periodCache = new Map();
+function cachedPeriod(s) {
+  const k = String(s == null ? "" : s);
+  if (!periodCache.has(k)) {
+    if (periodCache.size > 2000) periodCache.clear();
+    periodCache.set(k, parsePeriod(k));
+  }
+  return periodCache.get(k);
+}
 // 가정 가능 기간 안에 방문자 숙박 기간이 들어가는지(둘 다 해석될 때만 검사)
 export function periodFits(hostPeriod, stay) {
-  const h = parsePeriod(hostPeriod),
-    v = parsePeriod(stay);
+  const h = cachedPeriod(hostPeriod),
+    v = cachedPeriod(stay);
   if (!h || !v) return true;
   return v[0] >= h[0] && v[1] <= h[1];
 }

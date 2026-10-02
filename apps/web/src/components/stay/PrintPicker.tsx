@@ -10,6 +10,8 @@ import { cn } from "@/lib/utils";
 import { useT } from "@/lib/i18n";
 import { groupOrder, type CountUnit, type ExportCol } from "./stay";
 
+const EMPTY_GROUPS = { order: [] as string[], count: new Map<string, number>() };
+
 /**
  * 선택 인쇄(기존 PRINT_PICKERS) — 묶음 기준을 고르고 인쇄할 항목만 체크해 한 문서로 인쇄.
  * rows는 화면 정렬 순서 그대로(묶음 순서 = 처음 등장 순서)
@@ -35,7 +37,8 @@ export function PrintPicker<T>({
 }) {
   const { t } = useT();
   const [by, setBy] = useState(groupers[0][0]);
-  const { order, count } = useMemo(() => groupOrder(rows, (r) => keyOf(r, by)), [rows, by, keyOf]);
+  // 닫혀 있을 땐 묶지 않음(실시간 갱신마다 전체를 다시 묶는 비용 절감)
+  const { order, count } = useMemo(() => (open ? groupOrder(rows, (r) => keyOf(r, by)) : EMPTY_GROUPS), [open, rows, by, keyOf]);
   const [picked, setPicked] = useState<Set<string>>(new Set());
   // 창을 열 때·기준을 바꿀 때만 전체 선택으로 초기화(실시간 갱신으로 선택이 풀리지 않게)
   const orderRef = useRef(order);
@@ -52,13 +55,20 @@ export function PrintPicker<T>({
       return;
     }
     const total = keys.reduce((s, k) => s + (count.get(k) || 0), 0);
+    const byKey = new Map<string, T[]>();
+    for (const r of rows) {
+      const k = keyOf(r, by);
+      const list = byKey.get(k);
+      if (list) list.push(r);
+      else byKey.set(k, [r]);
+    }
     printDocument(
       t("stay.print.docTitle", { parish: PARISH.name, label, group: glabel }),
       keys.map((k) => ({
         heading: `${glabel} · ${k}`,
         note: t(`stay.unit.${unit}`, { n: count.get(k) || 0 }),
         columns: cols.map((c) => c[0]),
-        rows: rows.filter((r) => keyOf(r, by) === k).map((r) => cols.map(([, g]) => g(r))),
+        rows: (byKey.get(k) ?? []).map((r) => cols.map(([, g]) => g(r))),
       })),
       { subtitle: t("stay.print.subtitle", { group: glabel, n: keys.length, total: t(`stay.unit.${unit}`, { n: total }) }) },
     );

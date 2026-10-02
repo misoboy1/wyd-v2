@@ -162,9 +162,10 @@ export default function Homestays() {
             (!zone || (h.zone || NO_ZONE) === zone) &&
             matchQuery(dq, h.hid, h.host, h.zone, zoneApt(h.zone), h.addr, h.tel, h.lang, h.period, h.match, h.status, h.note),
         );
+    const keys = new Map(list.map((h) => [h, sortVal(h, sort.key, tr)])); // 비교마다 라벨 계산하지 않게
     return list.slice().sort((a, b) => {
-      const x = sortVal(a, sort.key, tr),
-        y = sortVal(b, sort.key, tr);
+      const x = keys.get(a),
+        y = keys.get(b);
       return (typeof x === "number" && typeof y === "number" ? x - y : cmp(x, y)) * sort.dir;
     });
   }, [homestays, I, focus, fill, zone, dq, sort, tr]);
