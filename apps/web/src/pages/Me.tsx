@@ -11,7 +11,7 @@ import { confirm } from "@/components/ui/confirm";
 import { MessageList } from "@/components/inbox/MessageList";
 import { PushCard } from "@/components/inbox/PushCard";
 import { api, type ApiError } from "@/lib/api";
-import { personKey, useInbox, usePerson } from "@/lib/messages";
+import { personKey, useInbox, usePerson, type PersonState } from "@/lib/messages";
 import { dropDevicePush } from "@/lib/push";
 import { useT } from "@/lib/i18n";
 
@@ -38,7 +38,7 @@ function useMeManifest() {
 export default function Me() {
   const { t } = useT();
   const qc = useQueryClient();
-  const { person, isLoading } = usePerson();
+  const { person, limited, isLoading } = usePerson();
   const inbox = useInbox(true);
   const [error, setError] = useState("");
   const [paste, setPaste] = useState("");
@@ -51,7 +51,7 @@ export default function Me() {
     setError("");
     try {
       const me = await api.post<PersonMe>("/p/link", { token });
-      qc.setQueryData(personKey, me);
+      qc.setQueryData<PersonState>(personKey, { person: me });
       if (location.hash.slice(1) !== token) history.replaceState(null, "", "/me#" + token);
     } catch (e) {
       setError((e as ApiError).message);
@@ -73,7 +73,7 @@ export default function Me() {
     await dropDevicePush(true);
     await api.post("/p/unlink").catch(() => {});
     history.replaceState(null, "", "/me");
-    qc.setQueryData(personKey, null);
+    qc.setQueryData<PersonState>(personKey, { person: null });
     toast.success(t("inbox.me.unlinked"));
   };
 
@@ -90,6 +90,8 @@ export default function Me() {
       <div className="mx-auto max-w-md">
         <PageHeader icon={<InboxIcon />} title={t("inbox.me.title")} />
         <div className="rounded-2xl border border-line bg-surface p-5 shadow-soft">
+          {/* 제한에 걸려 확인하지 못한 경우: 안내만 덧붙이고 붙여넣기 폼·오류는 그대로(새 링크를 받은 사람도 연결할 수 있게) */}
+          {limited && <p className="mb-3 rounded-lg bg-warn-soft px-3 py-2 text-[13px] text-warn">{t("inbox.me.limited")}</p>}
           <p className="text-[14px] leading-relaxed text-ink-2">{error || t("inbox.me.noLink")}</p>
           <form
             className="mt-4 flex items-end gap-2"

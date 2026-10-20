@@ -79,6 +79,8 @@ export const inbox = {
     title: "My messages",
     hello: "Hello, {name}",
     invalid: "This link has expired or is invalid. Please ask the parish for a new link.",
+    limited:
+      "We couldn't check your link right now because of heavy traffic. We'll try again automatically shortly. If you received a new link, paste it below.",
     noLink: "Open your personal link (QR) to see your messages. Scan your QR code again or paste the link below.",
     pasteLabel: "Personal link",
     connect: "Connect",

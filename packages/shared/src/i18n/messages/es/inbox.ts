@@ -79,6 +79,8 @@ export const inbox = {
     title: "Mis mensajes",
     hello: "Hola, {name}",
     invalid: "Este enlace ha caducado o no es válido. Pide un enlace nuevo a la parroquia.",
+    limited:
+      "Ahora no pudimos comprobar tu enlace por exceso de tráfico. Lo intentaremos de nuevo automáticamente en breve. Si recibiste un enlace nuevo, pégalo abajo.",
     noLink: "Abre tu enlace personal (QR) para ver tus mensajes. Vuelve a escanear el código QR o pega el enlace abajo.",
     pasteLabel: "Enlace personal",
     connect: "Conectar",

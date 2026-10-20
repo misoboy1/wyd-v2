@@ -10,16 +10,22 @@ export const inboxKey = ["inbox"] as const;
 export const sentKey = ["sent"] as const;
 export const personKey = ["person"] as const;
 
+export interface PersonState {
+  person: PersonMe | null;
+  /** 서버가 요청 제한으로 확인하지 못함(링크는 그대로) — 잠시 뒤 자동으로 다시 확인 */
+  limited?: boolean;
+}
 /** 개인 링크로 연결된 사람(로그인 사용자도 같은 기기에서 링크를 열 수 있으므로 항상 확인) */
 export function usePerson() {
   const { ready } = useAuth();
   const q = useQuery({
     queryKey: personKey,
-    queryFn: () => api.get<{ person: PersonMe | null }>("/p/me").then((r) => r.person),
+    queryFn: () => api.get<PersonState>("/p/me"),
     enabled: ready,
     staleTime: Infinity,
+    refetchInterval: (query) => (query.state.data?.limited ? 30_000 : false),
   });
-  return { person: q.data ?? null, isLoading: q.isLoading };
+  return { person: q.data?.person ?? null, limited: !!q.data?.limited, isLoading: q.isLoading };
 }
 
 /** 수신함 주체 — 로그인 계정 우선, 없으면 개인 링크. key는 사람별 캐시 키(계정을 바꿔도 이전 사람 수신함이 보이지 않게) */

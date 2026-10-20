@@ -26,13 +26,15 @@ export class PersonController {
 
   /** 쿠키가 무효로 확인되면(폐기·재발급) 지움 — 옛 기기가 요청마다 실패로 세지지 않게. 제한에 걸려 확인 못 한 경우는 그대로 둠 */
   private async current(req: FastifyRequest, reply: FastifyReply) {
-    const { p, limited } = await this.persons.lookup(req);
-    if (!p && !limited && req.cookies?.[PERSON_COOKIE]) reply.clearCookie(PERSON_COOKIE, cookieOpts());
-    return p;
+    const r = await this.persons.lookup(req);
+    if (!r.p && !r.limited && req.cookies?.[PERSON_COOKIE]) reply.clearCookie(PERSON_COOKIE, cookieOpts());
+    return r;
   }
 
+  /** 제한에 걸려 확인 못 했으면 403(링크 없음)이 아니라 429 — 화면이 "QR 다시 연결" 대신 "잠시 후 다시"를 안내하게 */
   private async must(req: FastifyRequest, reply: FastifyReply) {
-    const p = await this.current(req, reply);
+    const { p, limited } = await this.current(req, reply);
+    if (limited) throw new ApiError("RATE_LIMIT", "err.link.tooMany", 429);
     if (!p) throw Forbidden("err.link.required");
     return p;
   }
@@ -59,7 +61,8 @@ export class PersonController {
 
   /** 연결 안 된 기기는 401 대신 null — 공개 화면에서 매번 오류가 나지 않게 */
   @Get("me") async me(@Req() req: FastifyRequest, @Res({ passthrough: true }) reply: FastifyReply) {
-    return { person: await this.current(req, reply) };
+    const { p, limited } = await this.current(req, reply);
+    return { person: p, limited };
   }
 
   @Post("unlink")

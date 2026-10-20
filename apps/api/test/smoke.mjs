@@ -403,7 +403,7 @@ try {
   const fresh = await (await meAt(`wyd_pt=${await issueTok()}`, ipA)).json();
   ok(fresh.person?.id === pv.id, "같은 IP에서 틀린 쿠키 100개 뒤에도 정상 링크 동작", fresh);
   // IP 전체 한도(600) 초과 → 확인하지 못한 정상 쿠키는 거부하되 지우지는 않음(다시 QR을 찍지 않아도 되게)
-  const ipB = fakeIp() + "0";
+  const ipB = `10.${(stamp >> 8) & 255}.${stamp & 255}.251`; // ipA(1~250)와 겹치지 않게
   await Promise.all(
     Array.from({ length: 6 }, () =>
       (async () => {
@@ -411,9 +411,31 @@ try {
       })(),
     ),
   );
-  const limRes = await meAt(`wyd_pt=${await issueTok()}`, ipB);
+  const limTok = await issueTok();
+  const limRes = await meAt(`wyd_pt=${limTok}`, ipB);
   const lim = await limRes.json();
-  ok(lim.person === null && !clears(limRes), "IP 제한 중에는 정상 쿠키를 지우지 않음", lim);
+  ok(lim.person === null && lim.limited === true && !clears(limRes), "IP 제한 중: 정상 쿠키를 지우지 않고 limited 표시", lim);
+  const limInbox = await fetch(A + "/p/inbox", { headers: { cookie: `wyd_pt=${limTok}`, "x-real-ip": ipB } });
+  ok(limInbox.status === 429, "IP 제한 중 수신함 → 429(링크 없음 403 아님)", limInbox.status);
+  // 겹치는 명단을 순서를 바꿔 동시에 발급해도 교착 500 없음(id 정렬 + 재시도 — 둘 중 어느 쪽이 막았는지는 구분하지 않음)
+  const pv2 = (await call("POST", "/t/visitors", { name: "Smoke Link 2", sex: "남", note: "smoke" })).body;
+  const cross = [];
+  for (let i = 0; i < 10; i++) {
+    await call("DELETE", `/links/visitor/${pv.id}`);
+    await call("DELETE", `/links/visitor/${pv2.id}`);
+    cross.push(
+      ...(await Promise.all([
+        call("POST", "/links", { kind: "visitor", ids: [pv.id, pv2.id] }),
+        call("POST", "/links", { kind: "visitor", ids: [pv2.id, pv.id] }),
+      ])),
+    );
+  }
+  ok(
+    cross.every((r) => r.status === 201 || r.status === 409),
+    "겹치는 명단 동시 발급 10회 → 201/409만(500 없음)",
+    cross.map((r) => r.status),
+  );
+  await call("DELETE", `/links/visitor/${pv2.id}`);
   await call("DELETE", `/links/visitor/${pv.id}`);
   await call("DELETE", `/messages/${toV.body.id}`);
 } finally {

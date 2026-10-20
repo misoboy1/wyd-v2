@@ -79,6 +79,8 @@ export const inbox = {
     title: "Minhas mensagens",
     hello: "Olá, {name}",
     invalid: "Este link expirou ou é inválido. Peça um novo link à paróquia.",
+    limited:
+      "Não foi possível verificar seu link agora por excesso de acessos. Tentaremos de novo automaticamente em instantes. Se você recebeu um link novo, cole-o abaixo.",
     noLink: "Abra seu link pessoal (QR) para ver suas mensagens. Escaneie o QR de novo ou cole o link abaixo.",
     pasteLabel: "Link pessoal",
     connect: "Conectar",

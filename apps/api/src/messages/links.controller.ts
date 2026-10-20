@@ -3,7 +3,8 @@ import { and, desc, eq, inArray, isNull, sql } from "drizzle-orm";
 import { linkIssueSchema, PERSON_KINDS, type PersonalLinkInfo, type PersonKind } from "@wyd/shared";
 import { db } from "../db/client.js";
 import { auditLog, personalLinks, visitors, volunteers } from "../db/schema.js";
-import { Invalid, NotFound, mapDbError } from "../common/errors.js";
+import { Invalid, NotFound } from "../common/errors.js";
+import { TablesService } from "../tables/tables.service.js";
 import type { AuthUser } from "../common/auth-user.js";
 import { CurrentUser, RequireLogin } from "../auth/roles.decorator.js";
 import { PushService } from "../push/push.service.js";
@@ -18,6 +19,7 @@ export class LinksController {
   constructor(
     private readonly persons: PersonService,
     private readonly push: PushService,
+    private readonly tables: TablesService,
   ) {}
 
   @Get() async list(): Promise<PersonalLinkInfo[]> {
@@ -34,27 +36,23 @@ export class LinksController {
     const p = linkIssueSchema.safeParse(body);
     if (!p.success) throw Invalid("err.checkInput");
     const { kind } = p.data;
-    const ids = [...new Set(p.data.ids)];
+    // id 오름차순 — 겹치는 명단을 동시에 발급해도 고유 인덱스 잠금 순서가 같아 교착이 나지 않게(API-05)
+    const ids = [...new Set(p.data.ids)].sort((a, b) => a - b);
     const tb = kind === "visitor" ? visitors : volunteers;
     const found = await db.select({ id: tb.id }).from(tb).where(inArray(tb.id, ids));
     if (found.length !== ids.length) throw NotFound(kind === "visitor" ? "err.table.visitors" : "err.table.volunteers");
     const issued = ids.map((refId) => ({ refId, token: newToken() }));
-    // 같은 사람을 동시에 발급하면 부분 고유 인덱스(personal_links_active_uq)에 걸림 → 409(err.dup.link)
-    await db
-      .transaction(async (tx) => {
-        await tx
-          .update(personalLinks)
-          .set({ revokedAt: sql`now()` })
-          .where(and(eq(personalLinks.kind, kind), inArray(personalLinks.refId, ids), isNull(personalLinks.revokedAt)));
-        await tx
-          .insert(personalLinks)
-          .values(issued.map((x) => ({ kind, refId: x.refId, tokenHash: hashToken(x.token), createdBy: u.id })));
-        // 감사 로그(보안 행위) — 토큰은 남기지 않음
-        await tx.insert(auditLog).values({ userId: u.id, tableName: "personal_links", action: "create", after: { kind, refIds: ids } });
-      })
-      .catch((e: unknown) => {
-        throw mapDbError(e);
-      });
+    // 같은 사람을 동시에 발급하면 부분 고유 인덱스(personal_links_active_uq)에 걸림 → 409(err.dup.link).
+    // tables.tx: 교착(40P01) 재시도 + DB 오류 매핑
+    await this.tables.tx(async (tx) => {
+      await tx
+        .update(personalLinks)
+        .set({ revokedAt: sql`now()` })
+        .where(and(eq(personalLinks.kind, kind), inArray(personalLinks.refId, ids), isNull(personalLinks.revokedAt)));
+      await tx.insert(personalLinks).values(issued.map((x) => ({ kind, refId: x.refId, tokenHash: hashToken(x.token), createdBy: u.id })));
+      // 감사 로그(보안 행위) — 토큰은 남기지 않음
+      await tx.insert(auditLog).values({ userId: u.id, tableName: "personal_links", action: "create", after: { kind, refIds: ids } });
+    });
     await this.push.removeOwner(kind, ids);
     ids.forEach((id) => this.persons.forget(kind, id));
     return issued.map((x) => ({ kind, ...x }));

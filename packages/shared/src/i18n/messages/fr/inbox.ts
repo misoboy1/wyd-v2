@@ -80,6 +80,8 @@ export const inbox = {
     title: "Mes messages",
     hello: "Bonjour, {name}",
     invalid: "Ce lien a expiré ou n'est pas valide. Demandez un nouveau lien à la paroisse.",
+    limited:
+      "Impossible de vérifier votre lien pour le moment en raison d'une forte affluence. Nouvel essai automatique dans un instant. Si vous avez reçu un nouveau lien, collez-le ci-dessous.",
     noLink: "Ouvrez votre lien personnel (QR) pour voir vos messages. Scannez à nouveau le QR ou collez le lien ci-dessous.",
     pasteLabel: "Lien personnel",
     connect: "Connecter",
