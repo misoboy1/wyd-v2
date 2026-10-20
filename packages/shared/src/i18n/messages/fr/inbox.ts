@@ -75,6 +75,23 @@ export const inbox = {
     offDone: "Notifications désactivées.",
     iosTitle: "Sur iPhone, ajoutez ce site à l'écran d'accueil pour recevoir les notifications",
     iosSteps: "Touchez le bouton Partager (□↑) dans Safari → « Sur l'écran d'accueil » → ouvrez-le depuis l'icône et touchez « Activer ».",
+    inApp:
+      "Les notifications ne fonctionnent pas dans des applis comme KakaoTalk ou Naver. Ouvrez cette page dans votre navigateur (Chrome ou Safari).",
+    inAppIos: "Touchez le menu ⋯ → « Ouvrir dans Safari », ou copiez l'adresse et collez-la dans Safari.",
+    meReopen: "Après avoir changé de navigateur, scannez à nouveau votre QR code ou collez votre lien personnel.",
+    openBrowser: "Ouvrir dans le navigateur",
+    copyLink: "Copier l'adresse",
+    copied: "Adresse copiée. Collez-la dans la barre d'adresse du navigateur.",
+    iosOld:
+      "Cet iPhone doit être sous iOS 16.4 ou plus récent pour recevoir les notifications (Réglages → Général → Mise à jour logicielle).",
+    deniedIos: "Ouvrez Réglages de l'iPhone → Notifications → cette appli de l'écran d'accueil → activez « Autoriser les notifications ».",
+    deniedAndroid: "Touchez l'icône à gauche de la barre d'adresse → Autorisations (ou Paramètres du site) → Notifications → Autoriser.",
+    deniedSamsung: "Menu de Samsung Internet (≡) → Paramètres → Sites et téléchargements → Notifications → autorisez ce site.",
+    deniedDesktop: "Cliquez sur l'icône à gauche de la barre d'adresse → Paramètres du site → Notifications → Autoriser.",
+    recheck: "Vérifier à nouveau",
+    test: "Notification de test",
+    testTitle: "Test de notification",
+    testBody: "Cet appareil reçoit bien les notifications.",
   },
   me: {
     title: "Mes messages",
