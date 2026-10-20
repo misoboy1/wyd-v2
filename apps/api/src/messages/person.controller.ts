@@ -24,8 +24,15 @@ export class PersonController {
     private readonly svc: MessagesService,
   ) {}
 
-  private async must(req: FastifyRequest) {
-    const p = await this.persons.person(req);
+  /** 쿠키가 무효로 확인되면(폐기·재발급) 지움 — 옛 기기가 요청마다 실패로 세지지 않게. 제한에 걸려 확인 못 한 경우는 그대로 둠 */
+  private async current(req: FastifyRequest, reply: FastifyReply) {
+    const { p, limited } = await this.persons.lookup(req);
+    if (!p && !limited && req.cookies?.[PERSON_COOKIE]) reply.clearCookie(PERSON_COOKIE, cookieOpts());
+    return p;
+  }
+
+  private async must(req: FastifyRequest, reply: FastifyReply) {
+    const p = await this.current(req, reply);
     if (!p) throw Forbidden("err.link.required");
     return p;
   }
@@ -51,8 +58,8 @@ export class PersonController {
   }
 
   /** 연결 안 된 기기는 401 대신 null — 공개 화면에서 매번 오류가 나지 않게 */
-  @Get("me") async me(@Req() req: FastifyRequest) {
-    return { person: await this.persons.person(req) };
+  @Get("me") async me(@Req() req: FastifyRequest, @Res({ passthrough: true }) reply: FastifyReply) {
+    return { person: await this.current(req, reply) };
   }
 
   @Post("unlink")
@@ -62,15 +69,15 @@ export class PersonController {
     return { ok: true };
   }
 
-  @Get("inbox") async inbox(@Req() req: FastifyRequest) {
-    const p = await this.must(req);
+  @Get("inbox") async inbox(@Req() req: FastifyRequest, @Res({ passthrough: true }) reply: FastifyReply) {
+    const p = await this.must(req, reply);
     return this.svc.inbox({ kind: p.kind, refId: p.id });
   }
 
   @Post("read")
   @HttpCode(200)
-  async read(@Body() body: unknown, @Req() req: FastifyRequest) {
-    const p = await this.must(req);
+  async read(@Body() body: unknown, @Req() req: FastifyRequest, @Res({ passthrough: true }) reply: FastifyReply) {
+    const p = await this.must(req, reply);
     const b = readSchema.safeParse(body);
     if (!b.success) throw Invalid("err.checkInput");
     return this.svc.markRead({ kind: p.kind, refId: p.id }, b.data.ids);

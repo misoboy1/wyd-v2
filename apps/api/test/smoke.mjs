@@ -283,6 +283,8 @@ try {
     { cookie: deptC },
   );
   ok(deptOtherTeam.status === 403, "dept: 다른 팀 전체에게 메시지 → 403", deptOtherTeam.body);
+  const dupUser = await call("POST", "/users", { username: deptU.username, role: "dept", password: "test-pass-1234" });
+  ok(dupUser.status === 409 && dupUser.body?.error === "DUPLICATE", "같은 아이디로 계정 생성 → 409 DUPLICATE", dupUser.body);
   // 팀 이름이 조직도에 없는 계정끼리(둘 다 '팀 미배정')를 같은 팀으로 보지 않음
   const oddU = await mk("dept", { username: `tdeptodd${stamp}`, team: "없는팀X" + stamp });
   temp.push(oddU);
@@ -357,13 +359,29 @@ try {
   const re = await call("POST", "/links", { kind: "visitor", ids: [pv.id] });
   const oldTok = await call("GET", "/p/me", undefined, { cookie: pc });
   ok(re.status === 201 && oldTok.body?.person === null, "재발급 → 이전 링크 무효", oldTok.body);
-  // 새 링크로 다시 연결한 뒤 폐기 → 수신함 403
-  const link2 = await fetch(A + "/p/link", {
-    method: "POST",
-    headers: { "content-type": "application/json", "x-wyd": "1" },
-    body: JSON.stringify({ token: re.body[0].token }),
-  });
-  const pc2 = (link2.headers.getSetCookie?.() ?? []).map((c) => c.split(";")[0]).join("; ");
+  // 같은 사람 동시 발급 → 유효 링크는 하나, 나머지는 500이 아닌 409
+  const dupIss = await Promise.all([1, 2].map(() => call("POST", "/links", { kind: "visitor", ids: [pv.id] })));
+  ok(
+    dupIss.every((r) => r.status === 201 || r.status === 409) && dupIss.some((r) => r.status === 201),
+    "동시 발급 → 201 또는 409(500 없음)",
+    dupIss.map((r) => r.status),
+  );
+  // 이후 검사는 순차 발급 토큰으로(동시 발급이 둘 다 201이면 앞 토큰은 이미 폐기됨)
+  const issueTok = async () => (await call("POST", "/links", { kind: "visitor", ids: [pv.id] })).body[0].token;
+  const linkCookie = async (token) =>
+    (
+      await fetch(A + "/p/link", {
+        method: "POST",
+        headers: { "content-type": "application/json", "x-wyd": "1" },
+        body: JSON.stringify({ token }),
+      })
+    ).headers
+      .getSetCookie()
+      .map((c) => c.split(";")[0])
+      .join("; ");
+
+  // 새 링크로 연결한 뒤 폐기 → 수신함 403
+  const pc2 = await linkCookie(await issueTok());
   const before = await call("GET", "/p/inbox", undefined, { cookie: pc2 });
   const rv = await call("DELETE", `/links/visitor/${pv.id}`);
   const after = await call("GET", "/p/inbox", undefined, { cookie: pc2 });
@@ -372,6 +390,31 @@ try {
     rv.status,
     after.status,
   ]);
+
+  // 틀린 쿠키 제한 — 실행마다 다른 가짜 IP(X-Real-IP)로 검사해 127.0.0.1이 10분간 막히지 않게
+  const fakeIp = () => `10.${(stamp >> 8) & 255}.${stamp & 255}.${Math.floor(Math.random() * 250) + 1}`;
+  const badCookie = () => `wyd_pt=${crypto.randomUUID().replace(/-/g, "")}${"q".repeat(11)}`;
+  const meAt = (cookie, ip) => fetch(A + "/p/me", { headers: { cookie, "x-real-ip": ip } });
+  const clears = (r) => (r.headers.getSetCookie?.() ?? []).some((c) => c.startsWith("wyd_pt=;"));
+  const ipA = fakeIp();
+  ok(clears(await meAt(badCookie(), ipA)), "무효로 확인된 개인 링크 쿠키는 응답에서 지움");
+  // 서로 다른 틀린 쿠키 100개(예전 IP 60회 제한 초과) 뒤에도 캐시에 없는 정상 토큰은 동작
+  for (let i = 0; i < 100; i++) await meAt(badCookie(), ipA);
+  const fresh = await (await meAt(`wyd_pt=${await issueTok()}`, ipA)).json();
+  ok(fresh.person?.id === pv.id, "같은 IP에서 틀린 쿠키 100개 뒤에도 정상 링크 동작", fresh);
+  // IP 전체 한도(600) 초과 → 확인하지 못한 정상 쿠키는 거부하되 지우지는 않음(다시 QR을 찍지 않아도 되게)
+  const ipB = fakeIp() + "0";
+  await Promise.all(
+    Array.from({ length: 6 }, () =>
+      (async () => {
+        for (let i = 0; i < 100; i++) await meAt(badCookie(), ipB);
+      })(),
+    ),
+  );
+  const limRes = await meAt(`wyd_pt=${await issueTok()}`, ipB);
+  const lim = await limRes.json();
+  ok(lim.person === null && !clears(limRes), "IP 제한 중에는 정상 쿠키를 지우지 않음", lim);
+  await call("DELETE", `/links/visitor/${pv.id}`);
   await call("DELETE", `/messages/${toV.body.id}`);
 } finally {
   for (const u of temp) if (u?.id) await call("DELETE", `/users/${u.id}`);

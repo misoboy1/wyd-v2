@@ -57,22 +57,31 @@ export const Capacity = (key: string, params?: MsgParams) =>
   new ApiError("CAPACITY", key, HttpStatus.UNPROCESSABLE_ENTITY, undefined, params);
 export const Duplicate = (key: string) => new ApiError("DUPLICATE", key, HttpStatus.CONFLICT);
 
+type PgErr = { code?: string; constraint_name?: string; constraint?: string; cause?: PgErr };
+/** Postgres 오류 본체 — drizzle은 DB 오류를 DrizzleQueryError로 감싸 cause에 둔다 */
+export function pgCause(e: unknown): PgErr | null {
+  const outer = e as PgErr | null;
+  return outer && !outer.code && outer.cause ? outer.cause : outer;
+}
+
 /** Postgres 고유 제약 위반 → DUPLICATE */
 export function mapDbError(e: unknown): unknown {
-  const err = e as { code?: string; constraint_name?: string; constraint?: string };
+  const err = pgCause(e);
   if (err && err.code === "23505") {
     const c = err.constraint_name || err.constraint || "";
-    const key = c.includes("facilities_name")
-      ? "facilityName"
-      : c.includes("hid")
-        ? "hid"
-        : c.includes("pid")
-          ? "pid"
-          : c.includes("departments_name")
-            ? "deptName"
-            : c.includes("username")
-              ? "username"
-              : "other";
+    const key = c.includes("personal_links_active")
+      ? "link"
+      : c.includes("facilities_name")
+        ? "facilityName"
+        : c.includes("hid")
+          ? "hid"
+          : c.includes("pid")
+            ? "pid"
+            : c.includes("departments_name")
+              ? "deptName"
+              : c.includes("username")
+                ? "username"
+                : "other";
     return Duplicate(`err.dup.${key}`);
   }
   return e;

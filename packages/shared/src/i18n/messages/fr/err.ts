@@ -46,6 +46,7 @@ export const err = {
     pid: "Le même numéro de pèlerin (P) existe déjà.",
     deptName: "Une division/zone portant le même nom existe déjà.",
     username: "Le même identifiant de connexion existe déjà.",
+    link: "Une autre émission était en cours au même moment. Actualisez la liste puis réessayez.",
     other: "Une valeur en double existe déjà.",
   },
   stay: {

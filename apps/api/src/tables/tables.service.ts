@@ -6,7 +6,7 @@ import { db, type Tx } from "../db/client.js";
 import * as S from "../db/schema.js";
 import { REGISTRY, canWrite, type TableDef } from "./registry.js";
 import type { AuthUser } from "../common/auth-user.js";
-import { ApiError, Conflict, Forbidden, Invalid, NotFound, Unauthorized, mapDbError } from "../common/errors.js";
+import { ApiError, Conflict, Forbidden, Invalid, NotFound, Unauthorized, mapDbError, pgCause } from "../common/errors.js";
 import { maskRow } from "../common/mask.js";
 import { issuesP, tr } from "../common/i18n.js";
 import { checkHostPolicy, checkVisitorStay } from "../visitors/stay.js";
@@ -189,7 +189,7 @@ export class TablesService {
       try {
         return await db.transaction(fn);
       } catch (e) {
-        const code = (e as { code?: string })?.code;
+        const code = pgCause(e)?.code;
         if ((code === "40P01" || code === "40001") && attempt < 3) {
           await new Promise((r) => setTimeout(r, 30 * attempt + Math.random() * 50));
           continue;

@@ -46,6 +46,7 @@ export const err = {
     pid: "The same pilgrim number (P) already exists.",
     deptName: "A division/zone with the same name already exists.",
     username: "The same login ID already exists.",
+    link: "Another issue was in progress at the same time. Refresh the list and issue again.",
     other: "A duplicate value already exists.",
   },
   stay: {

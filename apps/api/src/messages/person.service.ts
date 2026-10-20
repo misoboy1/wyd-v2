@@ -12,8 +12,10 @@ import { UsersCache } from "../auth/users.cache.js";
 
 export const PERSON_COOKIE = "wyd_pt";
 const TTL = 60_000;
-// 틀린 개인 링크 쿠키: IP당 10분 60회까지만 DB 조회
-const cookieMisses = new Limiter(60, 10 * 60_000);
+// 틀린 개인 링크 쿠키 — 같은 쿠키는 10분 5회, 한 IP 전체는 10분 600회까지만 DB 조회.
+// 성당·숙소 Wi-Fi처럼 한 IP 뒤에 많은 기기가 있어도, 폐기된 옛 QR 기기 몇 대 때문에 정상 사용자가 막히지 않게
+const tokenMisses = new Limiter(5, 10 * 60_000);
+const ipMisses = new Limiter(600, 10 * 60_000);
 
 export const newToken = () => randomBytes(32).toString("base64url");
 export const hashToken = (t: string) => createHash("sha256").update(t).digest("base64url");
@@ -29,12 +31,18 @@ export class PersonService {
   constructor(private readonly users: UsersCache) {}
   private cache = new Map<string, { p: PersonMe | null; at: number }>();
 
+  /** 캐시에 있는 유효 토큰(DB 조회 없음) */
+  private cached(h: string): PersonMe | null {
+    const hit = this.cache.get(h);
+    return hit && Date.now() - hit.at < TTL ? hit.p : null;
+  }
+
   /** 토큰 → 사람. 폐기됐거나 명단에서 지워졌으면 null */
   async byToken(token: string | undefined): Promise<PersonMe | null> {
     if (!token || token.length > 100) return null;
     const h = hashToken(token);
-    const hit = this.cache.get(h);
-    if (hit && Date.now() - hit.at < TTL) return hit.p;
+    const hit = this.cached(h);
+    if (hit) return hit;
     const [l] = await db
       .select({ kind: personalLinks.kind, refId: personalLinks.refId })
       .from(personalLinks)
@@ -55,17 +63,30 @@ export class PersonService {
   }
 
   /**
-   * 쿠키의 개인 링크. 틀린 쿠키를 반복하는 IP는 DB 조회 없이 무시(SEC-05).
-   * count=false: SSE 주기 재확인 — 폐기된 기기가 연결을 열어 둔 것만으로 같은 IP(성당 Wi-Fi)의 정상 사용자가 막히지 않게
+   * 쿠키의 개인 링크. 틀린 쿠키를 반복하면 DB 조회 없이 무시(SEC-05) — 캐시된 유효 토큰은 제한과 무관.
+   * limited: 제한에 걸려 확인하지 못함(무효로 확인된 것과 구분 — 이때 쿠키를 지우면 정상 사용자 연결이 끊김).
+   * count=false: SSE 주기 재확인(연결을 열어 둔 것만으로 실패를 쌓지 않게)
    */
-  async person(req: FastifyRequest, count = true) {
+  async lookup(req: FastifyRequest, count = true): Promise<{ p: PersonMe | null; limited: boolean }> {
     const token = req.cookies?.[PERSON_COOKIE];
-    if (!token) return null;
-    const ip = clientIp(req);
-    if (count && cookieMisses.retryAfter(ip)) return null;
+    if (!token || token.length > 100) return { p: null, limited: false };
+    const h = hashToken(token);
+    const hit = this.cached(h);
+    if (hit) return { p: hit, limited: false };
+    const ip = clientIp(req),
+      key = `${ip}|${h}`;
+    // IP 먼저 — 이미 막힌 IP의 무작위 쿠키로 토큰별 기록이 계속 늘지 않게
+    if (count && (ipMisses.retryAfter(ip) || tokenMisses.retryAfter(key))) return { p: null, limited: true };
     const p = await this.byToken(token);
-    if (!p && count) cookieMisses.hit(ip);
-    return p;
+    if (!p && count) {
+      tokenMisses.hit(key);
+      ipMisses.hit(ip);
+    }
+    return { p, limited: false };
+  }
+
+  async person(req: FastifyRequest, count = true) {
+    return (await this.lookup(req, count)).p;
   }
 
   /** 요청한 주체: 로그인 계정이 우선, 없으면 개인 링크 */

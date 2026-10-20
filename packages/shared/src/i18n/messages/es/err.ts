@@ -46,6 +46,7 @@ export const err = {
     pid: "Ya existe el mismo número de peregrino (P).",
     deptName: "Ya existe una división/zona con el mismo nombre.",
     username: "Ya existe el mismo usuario de acceso.",
+    link: "Se estaba emitiendo otro enlace al mismo tiempo. Actualiza la lista y vuelve a emitirlo.",
     other: "Ya existe un valor duplicado.",
   },
   stay: {
