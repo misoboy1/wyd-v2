@@ -92,7 +92,8 @@ export default function Me() {
         <div className="rounded-2xl border border-line bg-surface p-5 shadow-soft">
           {/* 제한에 걸려 확인하지 못한 경우: 안내만 덧붙이고 붙여넣기 폼·오류는 그대로(새 링크를 받은 사람도 연결할 수 있게) */}
           {limited && <p className="mb-3 rounded-lg bg-warn-soft px-3 py-2 text-[13px] text-warn">{t("inbox.me.limited")}</p>}
-          <p className="text-[14px] leading-relaxed text-ink-2">{error || t("inbox.me.noLink")}</p>
+          {/* 제한 중(링크는 살아 있을 수 있음)에는 "QR 다시 스캔" 기본 안내를 겹쳐 보이지 않음 — 연결 시도 오류는 그대로 표시 */}
+          {(error || !limited) && <p className="text-[14px] leading-relaxed text-ink-2">{error || t("inbox.me.noLink")}</p>}
           <form
             className="mt-4 flex items-end gap-2"
             onSubmit={(e) => {
