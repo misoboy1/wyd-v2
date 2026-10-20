@@ -26,6 +26,9 @@ const Qna = lazy(() => import("@/pages/Qna"));
 const Places = lazy(() => import("@/pages/Places"));
 const Gori = lazy(() => import("@/pages/Gori"));
 const Users = lazy(() => import("@/pages/Users"));
+const Inbox = lazy(() => import("@/pages/Inbox"));
+const Me = lazy(() => import("@/pages/Me"));
+const Links = lazy(() => import("@/pages/Links"));
 const NotFound = lazy(() => import("@/pages/NotFound"));
 
 function Live() {
@@ -153,6 +156,30 @@ export function App() {
                 element={
                   <P>
                     <Gori />
+                  </P>
+                }
+              />
+              <Route
+                path="inbox"
+                element={
+                  <P auth>
+                    <Inbox />
+                  </P>
+                }
+              />
+              <Route
+                path="me"
+                element={
+                  <P>
+                    <Me />
+                  </P>
+                }
+              />
+              <Route
+                path="admin/links"
+                element={
+                  <P auth roles={["admin"]}>
+                    <Links />
                   </P>
                 }
               />

@@ -25,4 +25,6 @@ export const nav = {
   places: "Lugares y mapa",
   gori: "Cadena de oración",
   users: "Cuentas",
+  inbox: "Mensajes",
+  links: "Enlaces personales · QR",
 } satisfies Shape<typeof ko>;

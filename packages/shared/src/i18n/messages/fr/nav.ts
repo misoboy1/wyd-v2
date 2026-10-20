@@ -25,4 +25,6 @@ export const nav = {
   places: "Lieux et carte",
   gori: "Chaîne de prière",
   users: "Comptes",
+  inbox: "Messages",
+  links: "Liens personnels · QR",
 } satisfies Shape<typeof ko>;

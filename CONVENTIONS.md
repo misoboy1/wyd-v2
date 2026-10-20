@@ -55,7 +55,7 @@ npm run format         # Prettier 적용
 
 | ID | 규칙 |
 |---|---|
-| API-01 | 업무 표 쓰기는 **`TablesService`(`createIn`/`updateIn`/`removeIn`/`bulk`) 경유** — 트랜잭션, `FOR UPDATE`, `version` 검사, `audit`, `events.emit`이 함께 보장됨. 컨트롤러에서 `db.insert/update/delete` 직접 호출 금지(계정 `users`·`wyd_status` 제외) |
+| API-01 | 업무 표 쓰기는 **`TablesService`(`createIn`/`updateIn`/`removeIn`/`bulk`) 경유** — 트랜잭션, `FOR UPDATE`, `version` 검사, `audit`, `events.emit`이 함께 보장됨. 컨트롤러에서 `db.insert/update/delete` 직접 호출 금지(계정 `users`·`wyd_status` 제외. 메시지·개인 링크·푸시 구독 표(`messages`·`message_recipients`·`personal_links`·`push_subscriptions`)는 대상 확장·토큰 신원 때문에 `messages/`·`push/` 전용 모듈이 직접 쓰되, 발송·삭제·링크 발급·폐기는 `audit_log`에 남김) |
 | API-02 | 권한은 **`tables/registry.ts`의 `read`/`canWrite`/`scope`/`publicMask`** 한 곳에서. 라우트에는 `@RequireLogin(역할)`만. 프론트 `useCan()`도 같은 규칙으로 맞출 것 |
 | API-03 | 오류는 `common/errors.ts`의 코드(`CONFLICT`·`STAY`·`CAPACITY`·`VALIDATION`·`NOTFOUND`·`FORBIDDEN`·`DUPLICATE`·`RATE_LIMIT`)로만. `throw new Error`를 클라이언트까지 흘리지 않음. DB 오류는 `mapDbError` |
 | API-04 | 입력 검증은 shared `schemas`(zod) + `safeParse`. 수정은 **현재 행과 병합 후 전체 검증**(부분 스키마 기본값이 덮어쓰는 문제 방지) |

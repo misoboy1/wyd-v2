@@ -5,6 +5,7 @@ import type { TableName, User } from "@wyd/shared";
 import { teamInfo, VOLUNTEER_VIEW_ROLES } from "@wyd/shared";
 import { api, setSessionExpiredHandler } from "./api";
 import { tt } from "./i18n";
+import { dropDevicePush } from "./push";
 
 type AuthUser = Pick<User, "id" | "username" | "name" | "role" | "team" | "homestayId">;
 interface AuthCtx {
@@ -72,6 +73,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [qc],
   );
   const logout = useCallback(async () => {
+    await dropDevicePush(); // 로그인 상태에서만 서버 구독을 지울 수 있으므로 로그아웃 전에
     await api.post("/auth/logout").catch(() => {});
     // 표 캐시는 모두 지움 — 공개 표도 로그인 사용자에겐 마스킹 전 값(연락처)이 있으므로. 첫 일괄 로딩이 다시 채움
     qc.removeQueries({ queryKey: ["t"] });

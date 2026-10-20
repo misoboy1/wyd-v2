@@ -1,11 +1,13 @@
 // 데이터 계층 — 표별 캐시(React Query) + 낙관적 저장 + SSE 실시간 반영 + 충돌 처리
 import { useEffect, useMemo, useRef } from "react";
 import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
+import { useNavigate } from "react-router";
 import { toast } from "sonner";
 import { TABLE_NAMES, translateDynamic, type Dataset, type TableName } from "@wyd/shared";
 import { api, ApiError } from "./api";
 import { useAuth, useCan, AUTH_TABLES } from "./auth";
 import { getLocale, tt } from "./i18n";
+import { inboxKey, sentKey, usePerson } from "./messages";
 
 /** 서버·검증 메시지 키를 현재 언어로(키가 아니면 그대로) */
 const tdNow = (k: string) => translateDynamic(getLocale(), k);
@@ -102,7 +104,16 @@ function takeEcho(t: string) {
 /** SSE 구독: 다른 사용자가 바꾼 표만 다시 불러옴. 재연결 시 전체 새로고침(놓친 이벤트 보정) */
 export function useLiveUpdates() {
   const qc = useQueryClient();
+  // 화면 이동마다 navigate 참조가 바뀔 수 있음 — SSE를 다시 붙이지 않도록 ref로
+  const navigate = useNavigate();
+  const nav = useRef(navigate);
+  useEffect(() => {
+    nav.current = navigate;
+  }, [navigate]);
   const uid = useAuth().user?.id;
+  // 개인 링크(순례자·봉사자) 연결이 바뀌면 SSE 신원도 바뀌므로 재연결
+  const { person } = usePerson();
+  const pkey = person ? `${person.kind}:${person.id}` : "";
   const pending = useRef(new Set<string>());
   const timer = useRef<number | undefined>(undefined);
   useEffect(() => {
@@ -117,9 +128,17 @@ export function useLiveUpdates() {
       es = new EventSource("/api/events");
       es.addEventListener("change", (ev) => {
         try {
-          const e = JSON.parse(ev.data) as { tables: string[]; by?: number };
+          const e = JSON.parse(ev.data) as { tables: string[]; by?: number; msg?: { id: number; title: string } };
           const mine = uid != null && e.by === uid;
+          // 수신함·보낸 목록은 표가 아니라 사람별 조회 — 바로 무효화
+          if (e.tables.includes("inbox")) void qc.invalidateQueries({ queryKey: inboxKey });
+          if (e.tables.includes("sent")) void qc.invalidateQueries({ queryKey: sentKey });
+          if (e.msg)
+            toast.info(tt("inbox.toastNew", { title: e.msg.title }), {
+              action: { label: tt("inbox.toastView"), onClick: () => void nav.current(uid != null ? "/inbox" : "/me") },
+            });
           e.tables.forEach((t) => {
+            if (t === "inbox" || t === "sent") return;
             if (!(mine && takeEcho(t))) pending.current.add(t);
           });
           if (!pending.current.size) return;
@@ -146,7 +165,7 @@ export function useLiveUpdates() {
       es?.close();
       clearTimeout(timer.current);
     };
-  }, [qc, uid]);
+  }, [qc, uid, pkey]);
 }
 
 // ── 충돌 안내(다른 사용자가 먼저 수정) ─────────────────────────────

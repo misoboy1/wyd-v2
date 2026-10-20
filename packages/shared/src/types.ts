@@ -1,4 +1,5 @@
 // 도메인 타입 — API 응답/요청과 화면이 공유
+import type { MessageTarget, PersonKind } from "./schemas.js";
 export type Role = "admin" | "dept" | "host";
 // 봉사자 명단(연락처 포함)·조직도 열람 역할 — 서버 registry scope, 화면 라우트·메뉴·canRead가 모두 이 값을 따름
 export const VOLUNTEER_VIEW_ROLES: readonly Role[] = ["admin", "dept"];
@@ -125,6 +126,36 @@ export interface PostComment extends Base {
   author: string;
   authorId?: number | null;
 }
+/** 받은 메시지 한 건(GET /messages/inbox, /p/inbox) */
+export interface InboxMessage {
+  id: number;
+  title: string;
+  body: string;
+  link: string;
+  sender: string;
+  createdAt: string;
+  readAt: string | null;
+}
+/** 보낸 메시지 한 건(GET /messages/sent) — targets는 보낼 때 고른 대상 그대로 */
+export interface SentMessage extends Omit<InboxMessage, "readAt"> {
+  senderId: number | null;
+  targets: MessageTarget[];
+  total: number;
+  read: number;
+}
+/** 개인 링크로 접속한 사람(GET /p/me) */
+export interface PersonMe {
+  kind: PersonKind;
+  id: number;
+  name: string;
+}
+/** 개인 링크 발급 현황(GET /links) — 토큰은 발급 순간에만 응답 */
+export interface PersonalLinkInfo {
+  kind: PersonKind;
+  refId: number;
+  createdAt: string;
+}
+
 export interface Qna extends Base {
   date: string;
   author: string;

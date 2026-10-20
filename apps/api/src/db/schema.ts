@@ -277,6 +277,73 @@ export const wydStatus = pgTable("wyd_status", {
   fetchedAt: timestamp("fetched_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+// ── 메시지(수신함) ── 받는 사람은 계정(user)·순례자(visitor)·봉사자(volunteer). 명단 행이 지워져도 기록은 남김(FK 없음)
+export const messages = pgTable(
+  "messages",
+  {
+    id: serial("id").primaryKey(),
+    title: t("title"),
+    body: t("body"),
+    link: t("link"),
+    sender: t("sender"),
+    senderId: integer("sender_id"),
+    /** 보낼 때 고른 대상(MessageTarget[]) — 보낸 메시지 목록 표시용 */
+    targets: jsonb("targets").notNull().default([]),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (x) => [index("messages_sender_idx").on(x.senderId)],
+);
+
+export const messageRecipients = pgTable(
+  "message_recipients",
+  {
+    messageId: integer("message_id")
+      .notNull()
+      .references(() => messages.id, { onDelete: "cascade" }),
+    kind: text("kind").notNull(), // user | visitor | volunteer
+    refId: integer("ref_id").notNull(),
+    readAt: timestamp("read_at", { withTimezone: true }),
+  },
+  (x) => [uniqueIndex("message_recipients_pk").on(x.messageId, x.kind, x.refId), index("message_recipients_who_idx").on(x.kind, x.refId)],
+);
+
+/** 웹 푸시 구독 — 기기(브라우저)마다 한 행. 만료(404·410)되면 발송 시 삭제 */
+export const pushSubscriptions = pgTable(
+  "push_subscriptions",
+  {
+    id: serial("id").primaryKey(),
+    endpoint: text("endpoint").notNull(),
+    p256dh: text("p256dh").notNull(),
+    auth: text("auth").notNull(),
+    kind: text("kind").notNull(), // user | visitor | volunteer
+    refId: integer("ref_id").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    lastOkAt: timestamp("last_ok_at", { withTimezone: true }),
+  },
+  (x) => [uniqueIndex("push_subscriptions_endpoint_uq").on(x.endpoint), index("push_subscriptions_who_idx").on(x.kind, x.refId)],
+);
+
+/** 개인 링크(계정 없는 순례자·봉사자 신원) — 토큰 원문은 저장하지 않고 sha256만 */
+export const personalLinks = pgTable(
+  "personal_links",
+  {
+    id: serial("id").primaryKey(),
+    kind: text("kind").notNull(), // visitor | volunteer
+    refId: integer("ref_id").notNull(),
+    tokenHash: text("token_hash").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    createdBy: integer("created_by"),
+    revokedAt: timestamp("revoked_at", { withTimezone: true }),
+  },
+  (x) => [
+    uniqueIndex("personal_links_token_uq").on(x.tokenHash),
+    // 한 사람에 유효한 링크는 하나 — 동시 재발급(더블클릭)으로 둘이 생기지 않게
+    uniqueIndex("personal_links_active_uq")
+      .on(x.kind, x.refId)
+      .where(sql`${x.revokedAt} is null`),
+  ],
+);
+
 export const auditLog = pgTable(
   "audit_log",
   {

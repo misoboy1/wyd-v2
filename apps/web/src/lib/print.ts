@@ -43,6 +43,11 @@ export function printDocument(
     th{background:#f1f5f9;text-align:left;font-weight:600;color:#374151}
     th,td{border:1px solid #e5e7eb;padding:4px 6px;vertical-align:top;white-space:pre-wrap}.empty{color:#9ca3af;text-align:center}
   </style></head><body><header><h1>${esc(title)}</h1><div class="meta">${esc(PARISH.name)} · 2027 WYD${opts.subtitle ? " · " + esc(opts.subtitle) : ""} · ${esc(tt("shell.print.printedOn", { date: todayKST() }))}</div></header>${kpi}${body}</body></html>`;
+  printHtml(html);
+}
+
+/** 완성된 문서(값은 모두 이스케이프된 상태)를 숨은 iframe에 그려 인쇄 */
+function printHtml(html: string) {
   const f = document.createElement("iframe");
   f.style.cssText = "position:fixed;right:0;bottom:0;width:0;height:0;border:0";
   document.body.appendChild(f);
@@ -55,4 +60,30 @@ export function printDocument(
     f.contentWindow?.print();
     setTimeout(() => f.remove(), 2000);
   }, 250);
+}
+
+export interface QrCard {
+  name: string;
+  sub?: string;
+  /** qrPath() 결과 — 숫자·명령만이므로 그대로 넣음 */
+  qr: { size: number; d: string };
+  hint: string;
+}
+/** 개인 링크 QR 카드(A4 한 장에 2×4장, 잘라서 나눠 줌) */
+export function printQrCards(title: string, cards: QrCard[]) {
+  const body = cards
+    .map(
+      (c) => `<div class="card"><svg viewBox="0 0 ${c.qr.size} ${c.qr.size}" shape-rendering="crispEdges"><path d="${c.qr.d}"/></svg>
+      <div class="txt"><div class="name">${esc(c.name)}</div>${c.sub ? `<div class="sub">${esc(c.sub)}</div>` : ""}<p>${esc(c.hint)}</p>
+      <div class="org">${esc(PARISH.name)} · WYD 2027</div></div></div>`,
+    )
+    .join("");
+  printHtml(`<!doctype html><html lang="${getLocale()}"><head><meta charset="utf-8"><title>${esc(title)}</title><style>
+    @page{size:A4;margin:10mm}*{box-sizing:border-box}
+    body{font-family:"Pretendard","Malgun Gothic",system-ui,sans-serif;color:#111827;margin:0;display:grid;grid-template-columns:1fr 1fr;gap:0}
+    .card{display:flex;gap:10px;align-items:center;height:68mm;padding:6mm;border:1px dashed #9ca3af;page-break-inside:avoid}
+    svg{width:40mm;height:40mm;flex:none}path{fill:#111827}
+    .name{font-size:15px;font-weight:700}.sub{font-size:11px;color:#6b7280;margin-top:2px}
+    p{font-size:10.5px;line-height:1.45;margin:6px 0}.org{font-size:9.5px;color:#1b4fc4;font-weight:600}
+  </style></head><body>${body}</body></html>`);
 }

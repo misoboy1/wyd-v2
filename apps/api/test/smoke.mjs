@@ -149,6 +149,22 @@ try {
     ok(hostVols.status === 200 && hostVols.body.length === 0, "host: 봉사자 명단(연락처) 받지 않음", hostVols.body?.length);
     const hostHs = await call("GET", "/t/homestays", undefined, { cookie: hostC });
     ok(hostHs.body.length === 1 && hostHs.body[0].id === myHs.id, "host: 자기 가정만 조회");
+    const hostOtherMsg = await call(
+      "POST",
+      "/messages",
+      { title: "x", body: "x", to: [{ k: "homestay", id: otherHs.id }], dryRun: true },
+      { cookie: hostC },
+    );
+    ok(hostOtherMsg.status === 403, "host: 다른 가정에 메시지 → 403", hostOtherMsg.body);
+    if (outsideVisitor) {
+      const hostVisMsg = await call(
+        "POST",
+        "/messages",
+        { title: "x", body: "x", to: [{ k: "visitor", id: outsideVisitor.id }], dryRun: true },
+        { cookie: hostC },
+      );
+      ok(hostVisMsg.status === 403, "host: 다른 가정 순례자에게 메시지 → 403", hostVisMsg.body);
+    }
   }
   const deptU = await mk("dept", { team: "환대팀" });
   temp.push(deptU);
@@ -198,6 +214,165 @@ try {
   await call("DELETE", `/t/posts/${post.id}?version=${post.version}`);
   const left = (await call("GET", "/t/postComments")).body.filter((c) => c.postId === post.id);
   ok(left.length === 0, "글 삭제 → 댓글도 함께 삭제", left);
+
+  // 8-2) 메시지: 대상자에게만 보임·읽음·권한·SSE 대상 한정·개인 링크·푸시 구독 주소 제한
+  // SSE 한 연결을 열어 두고 ms 동안 받은 change 이벤트를 모음
+  const listen = (c, ms = 1500) =>
+    new Promise((resolve) => {
+      const ac = new AbortController(),
+        got = [];
+      setTimeout(() => {
+        ac.abort();
+        resolve(got);
+      }, ms);
+      fetch(A + "/events", { headers: { cookie: c }, signal: ac.signal })
+        .then(async (r) => {
+          const rd = r.body.getReader(),
+            dec = new TextDecoder();
+          let buf = "";
+          for (;;) {
+            const { value, done } = await rd.read();
+            if (done) break;
+            buf += dec.decode(value, { stream: true });
+            for (const m of buf.matchAll(/event: change\n(?:id: .*\n)?data: (.+)\n/g)) got.push(JSON.parse(m[1]));
+            buf = buf.slice(buf.lastIndexOf("\n\n") + 1);
+          }
+        })
+        .catch(() => {});
+    });
+  const dry = await call("POST", "/messages", { title: "t", body: "b", to: [{ k: "user", id: deptU.id }], dryRun: true });
+  ok(dry.status === 201 && dry.body.recipients === 1, "메시지 dryRun: 받을 인원만 계산", dry.body);
+  const deptSse = listen(deptC),
+    anonSse = listen("");
+  await new Promise((r) => setTimeout(r, 300)); // 구독이 붙은 뒤 보냄
+  const sent = await call("POST", "/messages", { title: "smoke 메시지", body: "본문", to: [{ k: "user", id: deptU.id }] });
+  ok(sent.status === 201 && sent.body.recipients === 1, "관리자 → 분과 계정 메시지 보내기", sent.body);
+  const [deptEv, anonEv] = await Promise.all([deptSse, anonSse]);
+  ok(
+    deptEv.some((e) => e.tables.includes("inbox") && e.msg?.id === sent.body.id && !("to" in e)),
+    "SSE: 받는 사람에게 inbox 이벤트(받는 사람 목록은 빼고)",
+    deptEv,
+  );
+  ok(!anonEv.some((e) => e.tables.includes("inbox")), "SSE: 다른 연결에는 inbox 이벤트 없음", anonEv);
+  const dIn = await call("GET", "/messages/inbox", undefined, { cookie: deptC });
+  const got = dIn.body.find((m) => m.id === sent.body.id);
+  ok(got && got.readAt === null && got.sender === login.body?.user?.name, "받는 사람 수신함에 안읽음으로 보임", dIn.body);
+  const aIn = await call("GET", "/messages/inbox");
+  ok(!aIn.body.some((m) => m.id === sent.body.id), "보낸 사람(비대상) 수신함에는 없음");
+  const rd = await call("POST", "/messages/read", { ids: [sent.body.id] }, { cookie: deptC });
+  ok(rd.body.updated === 1, "읽음 처리", rd.body);
+  const st = (await call("GET", "/messages/sent")).body.find((m) => m.id === sent.body.id);
+  ok(st && st.total === 1 && st.read === 1, "보낸 목록: 1/1명 읽음", st);
+  const deptAll = await call("POST", "/messages", { title: "x", body: "x", to: [{ k: "allVisitors" }] }, { cookie: deptC });
+  ok(deptAll.status === 403, "dept: 모든 순례자에게 보내기 → 403", deptAll.body);
+  const deptUp = await call("POST", "/messages", { title: "문의", body: "x", to: [{ k: "role", role: "admin" }] }, { cookie: deptC });
+  ok(deptUp.status === 201 && deptUp.body.recipients >= 1, "dept: 관리자 전체에게 보내기 허용", deptUp.body);
+  if (otherTeamVol) {
+    const deptOtherMsg = await call(
+      "POST",
+      "/messages",
+      { title: "x", body: "x", to: [{ k: "volunteer", id: otherTeamVol.id }], dryRun: true },
+      { cookie: deptC },
+    );
+    ok(deptOtherMsg.status === 403, "dept: 다른 팀 봉사자에게 메시지 → 403", deptOtherMsg.body);
+  }
+  const deptOtherTeam = await call(
+    "POST",
+    "/messages",
+    { title: "x", body: "x", to: [{ k: "team", team: "시설팀" }], dryRun: true },
+    { cookie: deptC },
+  );
+  ok(deptOtherTeam.status === 403, "dept: 다른 팀 전체에게 메시지 → 403", deptOtherTeam.body);
+  // 팀 이름이 조직도에 없는 계정끼리(둘 다 '팀 미배정')를 같은 팀으로 보지 않음
+  const oddU = await mk("dept", { username: `tdeptodd${stamp}`, team: "없는팀X" + stamp });
+  temp.push(oddU);
+  const oddC = await loginAs(oddU);
+  const oddV = (await call("POST", "/t/volunteers", { name: "smoke 미배정", team: "다른없는팀Y" })).body;
+  const oddMsg = await call(
+    "POST",
+    "/messages",
+    { title: "x", body: "x", to: [{ k: "volunteer", id: oddV.id }], dryRun: true },
+    { cookie: oddC },
+  );
+  ok(oddMsg.status === 403, "dept(팀 미배정): 다른 미배정 봉사자에게 메시지 → 403", oddMsg.body);
+  const oddTeam = await call(
+    "POST",
+    "/messages",
+    { title: "x", body: "x", to: [{ k: "team", team: "다른없는팀Y" }], dryRun: true },
+    { cookie: oddC },
+  );
+  ok(oddTeam.status === 403, "dept(팀 미배정): 미배정 팀 전체 → 403", oddTeam.body);
+  await call("DELETE", `/t/volunteers/${oddV.id}?version=${oddV.version}`);
+  const deptDel = await call("DELETE", `/messages/${sent.body.id}`, undefined, { cookie: deptC });
+  ok(deptDel.status === 403, "dept: 남이 보낸 메시지 삭제 → 403", deptDel.body);
+  const badLink = await call("POST", "/messages", {
+    title: "x",
+    body: "x",
+    link: "javascript:alert(1)",
+    to: [{ k: "user", id: deptU.id }],
+  });
+  ok(badLink.status === 400, "javascript: 링크 거부", badLink.body);
+  const anonMsg = await call("POST", "/messages", { title: "x", body: "x", to: [{ k: "role", role: "admin" }] }, { cookie: "" });
+  ok(anonMsg.status === 401, "비로그인 메시지 보내기 거부", anonMsg.body);
+  await call("DELETE", `/messages/${sent.body.id}`);
+  const dIn2 = await call("GET", "/messages/inbox", undefined, { cookie: deptC });
+  ok(!dIn2.body.some((m) => m.id === sent.body.id), "메시지 삭제 → 받은 사람 수신함에서도 사라짐");
+  await call("DELETE", `/messages/${deptUp.body.id}`);
+
+  // 개인 링크(계정 없는 순례자)
+  const pv = (await call("POST", "/t/visitors", { name: "Smoke Link", sex: "여", note: "smoke" })).body;
+  const iss = await call("POST", "/links", { kind: "visitor", ids: [pv.id] });
+  const token = iss.body?.[0]?.token;
+  ok(iss.status === 201 && typeof token === "string" && token.length >= 40, "개인 링크 발급(토큰은 발급 응답에만)", iss.body);
+  const deptIss = await call("POST", "/links", { kind: "visitor", ids: [pv.id] }, { cookie: deptC });
+  ok(deptIss.status === 403, "dept: 개인 링크 발급 거부", deptIss.body);
+  const linkRes = await fetch(A + "/p/link", {
+    method: "POST",
+    headers: { "content-type": "application/json", "x-wyd": "1" },
+    body: JSON.stringify({ token }),
+  });
+  const pc = (linkRes.headers.getSetCookie?.() ?? []).map((c) => c.split(";")[0]).join("; ");
+  ok(linkRes.status === 200 && pc.startsWith("wyd_pt="), "QR 링크로 기기 연결 → 쿠키 발급", linkRes.status);
+  const pme = await call("GET", "/p/me", undefined, { cookie: pc });
+  ok(pme.body?.person?.id === pv.id && pme.body.person.kind === "visitor", "개인 링크 신원 확인", pme.body);
+  const pSse = listen(pc);
+  await new Promise((r) => setTimeout(r, 300));
+  const toV = await call("POST", "/messages", { title: "순례자 안내", body: "x", to: [{ k: "visitor", id: pv.id }] });
+  ok(
+    (await pSse).some((e) => e.msg?.id === toV.body.id),
+    "SSE: 개인 링크 연결에도 inbox 이벤트",
+  );
+  const pIn = await call("GET", "/p/inbox", undefined, { cookie: pc });
+  ok(pIn.status === 200 && pIn.body.some((m) => m.id === toV.body.id), "순례자 수신함에 메시지", pIn.body);
+  const noLink = await call("GET", "/p/inbox", undefined, { cookie: "" });
+  ok(noLink.status === 403, "개인 링크 없이 /p/inbox → 403", noLink.body);
+  const wrong = await call("POST", "/p/link", { token: "x".repeat(43) }, { cookie: "" });
+  ok(wrong.status === 403, "틀린 토큰 → 403", wrong.body);
+  const evil = await call("POST", "/push/subscribe", { endpoint: "https://127.0.0.1/x", keys: { p256dh: "a", auth: "b" } }, { cookie: pc });
+  ok(evil.status === 400, "푸시 구독: 브라우저 푸시 서비스가 아닌 주소 거부(SSRF 방지)", evil.body);
+  const fcm = { endpoint: `https://fcm.googleapis.com/fcm/send/smoke-${stamp}`, keys: { p256dh: "a", auth: "b" } };
+  const subOk = await call("POST", "/push/subscribe", fcm, { cookie: pc });
+  ok(subOk.status === 200 || subOk.status === 503, "푸시 구독 등록(서버 VAPID 없으면 503)", subOk.body);
+  await call("POST", "/push/unsubscribe", { endpoint: fcm.endpoint }, { cookie: pc });
+  const re = await call("POST", "/links", { kind: "visitor", ids: [pv.id] });
+  const oldTok = await call("GET", "/p/me", undefined, { cookie: pc });
+  ok(re.status === 201 && oldTok.body?.person === null, "재발급 → 이전 링크 무효", oldTok.body);
+  // 새 링크로 다시 연결한 뒤 폐기 → 수신함 403
+  const link2 = await fetch(A + "/p/link", {
+    method: "POST",
+    headers: { "content-type": "application/json", "x-wyd": "1" },
+    body: JSON.stringify({ token: re.body[0].token }),
+  });
+  const pc2 = (link2.headers.getSetCookie?.() ?? []).map((c) => c.split(";")[0]).join("; ");
+  const before = await call("GET", "/p/inbox", undefined, { cookie: pc2 });
+  const rv = await call("DELETE", `/links/visitor/${pv.id}`);
+  const after = await call("GET", "/p/inbox", undefined, { cookie: pc2 });
+  ok(before.status === 200 && rv.status === 200 && after.status === 403, "링크 폐기 → 그 기기 수신함 403", [
+    before.status,
+    rv.status,
+    after.status,
+  ]);
+  await call("DELETE", `/messages/${toV.body.id}`);
 } finally {
   for (const u of temp) if (u?.id) await call("DELETE", `/users/${u.id}`);
 }

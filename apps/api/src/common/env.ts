@@ -23,5 +23,11 @@ export const env = {
   UPLOAD_DIR: process.env.UPLOAD_DIR ?? "./.data/uploads",
   WYD_SYNC_CRON: process.env.WYD_SYNC_CRON ?? "0 10 6 * * *", // 매일 06:10 KST
   WYD_SYNC_ENABLED: (process.env.WYD_SYNC_ENABLED ?? "true") === "true",
+  /** 웹 푸시(VAPID) — 없으면 푸시만 꺼지고 수신함은 동작. 만들기: npx web-push generate-vapid-keys */
+  VAPID_PUBLIC_KEY: process.env.VAPID_PUBLIC_KEY ?? "",
+  VAPID_PRIVATE_KEY: process.env.VAPID_PRIVATE_KEY ?? "",
+  VAPID_SUBJECT: process.env.VAPID_SUBJECT ?? "mailto:admin@example.com",
+  /** 개인 링크 쿠키 유효 기간(기본 180일 — 대회 기간 내내 유지) */
+  PERSON_TTL_SEC: num(process.env.PERSON_TTL_SEC, 180 * 24 * 3600),
   TZ: "Asia/Seoul",
 };

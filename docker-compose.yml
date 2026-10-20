@@ -43,6 +43,9 @@ services:
       UPLOAD_DIR: /srv/uploads
       WYD_SYNC_ENABLED: ${WYD_SYNC_ENABLED:-true}
       SEED_CONTENT: ${SEED_CONTENT:-true}
+      VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
+      VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-}
+      VAPID_SUBJECT: ${VAPID_SUBJECT:-mailto:admin@example.com}
     volumes:
       - uploads:/srv/uploads
     mem_limit: 256m

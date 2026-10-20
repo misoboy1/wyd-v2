@@ -14,6 +14,13 @@ import { EventsService } from "./events/events.service.js";
 import { UploadsController } from "./uploads/uploads.controller.js";
 import { WydController } from "./wyd/wyd.controller.js";
 import { WydService } from "./wyd/wyd.service.js";
+import { MessagesController } from "./messages/messages.controller.js";
+import { PersonController } from "./messages/person.controller.js";
+import { LinksController } from "./messages/links.controller.js";
+import { MessagesService } from "./messages/messages.service.js";
+import { PersonService } from "./messages/person.service.js";
+import { PushController } from "./push/push.controller.js";
+import { PushService } from "./push/push.service.js";
 
 @Module({
   controllers: [
@@ -25,12 +32,19 @@ import { WydService } from "./wyd/wyd.service.js";
     EventsController,
     UploadsController,
     WydController,
+    MessagesController,
+    PersonController,
+    LinksController,
+    PushController,
   ],
   providers: [
     UsersCache,
     TablesService,
     EventsService,
     WydService,
+    MessagesService,
+    PersonService,
+    PushService,
     { provide: APP_GUARD, useClass: AuthGuard },
     { provide: APP_FILTER, useClass: ApiErrorFilter },
   ],

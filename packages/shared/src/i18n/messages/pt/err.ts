@@ -23,7 +23,7 @@ export const err = {
   assignFormat: "Solicitação de alocação inválida",
   scopeInvalid: "Verifique o escopo (scope)",
   checkInput: "Verifique os dados",
-  what: { item: "Item", table: "Tabela", account: "Conta" },
+  what: { item: "Item", table: "Tabela", account: "Conta", message: "Mensagem", link: "Link pessoal" },
   table: {
     facilities: "Instalações",
     homestays: "Famílias anfitriãs",
@@ -74,6 +74,20 @@ export const err = {
   users: {
     selfDemote: "Você não pode remover seus próprios direitos de administrador.",
     selfDelete: "Você não pode excluir sua própria conta.",
+  },
+  msg: {
+    targetForbidden: "Você não tem permissão para enviar mensagens a este destinatário.",
+    noRecipients: "Ninguém receberia esta mensagem. Escolha os destinatários novamente.",
+    tooMany: "Destinatários demais (máx. {max}). Envie em partes.",
+  },
+  push: {
+    endpoint: "Este endereço de serviço de notificações não é compatível.",
+    disabled: "O servidor não tem configuração de notificações (VAPID). Fale com um administrador.",
+  },
+  link: {
+    invalid: "Este link expirou ou é inválido. Peça um novo link à paróquia.",
+    tooMany: "Tentativas demais. Tente novamente em instantes.",
+    required: "Faça login ou abra seu link pessoal.",
   },
   qna: {
     input: "Informe seu nome e a pergunta (nome até 40 e pergunta até 1.000 caracteres).",

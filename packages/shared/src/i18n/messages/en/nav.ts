@@ -18,4 +18,6 @@ export const nav = {
   places: "Places & Map",
   gori: "Prayer Chain",
   users: "Accounts",
+  inbox: "Messages",
+  links: "Personal links · QR",
 } satisfies Shape<typeof ko>;

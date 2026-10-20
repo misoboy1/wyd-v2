@@ -23,7 +23,7 @@ export const err = {
   assignFormat: "Demande d'affectation non valide",
   scopeInvalid: "Vérifiez la portée (scope)",
   checkInput: "Vérifiez la saisie",
-  what: { item: "Élément", table: "Table", account: "Compte" },
+  what: { item: "Élément", table: "Table", account: "Compte", message: "Message", link: "Lien personnel" },
   table: {
     facilities: "Installations",
     homestays: "Familles d'accueil",
@@ -74,6 +74,20 @@ export const err = {
   users: {
     selfDemote: "Vous ne pouvez pas retirer vos propres droits d'administrateur.",
     selfDelete: "Vous ne pouvez pas supprimer votre propre compte.",
+  },
+  msg: {
+    targetForbidden: "Vous n'avez pas le droit d'envoyer un message à ce destinataire.",
+    noRecipients: "Personne ne recevrait ce message. Choisissez à nouveau les destinataires.",
+    tooMany: "Trop de destinataires (max. {max}). Envoyez en plusieurs fois.",
+  },
+  push: {
+    endpoint: "Cette adresse de service de notifications n'est pas prise en charge.",
+    disabled: "Le serveur n'a pas de configuration de notifications (VAPID). Contactez un administrateur.",
+  },
+  link: {
+    invalid: "Ce lien a expiré ou n'est pas valide. Demandez un nouveau lien à la paroisse.",
+    tooMany: "Trop de tentatives. Réessayez dans un instant.",
+    required: "Connectez-vous ou ouvrez votre lien personnel.",
   },
   qna: {
     input: "Saisissez votre nom et votre question (nom jusqu'à 40 caractères, question jusqu'à 1 000).",

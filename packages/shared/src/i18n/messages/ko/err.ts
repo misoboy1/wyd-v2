@@ -21,7 +21,7 @@ export const err = {
   scopeInvalid: "scope 확인",
   checkInput: "입력 확인",
   /** notFound {what} 등에 넣는 대상 이름 */
-  what: { item: "항목", table: "표", account: "계정" },
+  what: { item: "항목", table: "표", account: "계정", message: "메시지", link: "개인 링크" },
   /** 표 이름(registry label) */
   table: {
     facilities: "시설",
@@ -69,6 +69,20 @@ export const err = {
   users: {
     selfDemote: "자기 자신의 관리자 권한은 해제할 수 없습니다.",
     selfDelete: "자기 자신은 삭제할 수 없습니다.",
+  },
+  msg: {
+    targetForbidden: "이 대상에게 메시지를 보낼 권한이 없습니다.",
+    noRecipients: "받을 사람이 없습니다. 받는 사람을 다시 고르세요.",
+    tooMany: "받는 사람이 너무 많습니다(최대 {max}명). 나눠서 보내세요.",
+  },
+  push: {
+    endpoint: "지원하지 않는 알림 서비스 주소입니다.",
+    disabled: "서버에 알림(VAPID) 설정이 없습니다. 관리자에게 문의하세요.",
+  },
+  link: {
+    invalid: "링크가 만료되었거나 올바르지 않습니다. 본당에 새 링크를 요청하세요.",
+    tooMany: "시도가 너무 많습니다. 잠시 후 다시 시도하세요.",
+    required: "로그인하거나 개인 링크로 접속해야 합니다.",
   },
   qna: {
     input: "질문자와 질문 내용을 입력하세요(질문자 40자, 질문 1000자 이내).",

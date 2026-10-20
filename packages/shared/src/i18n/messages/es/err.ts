@@ -23,7 +23,7 @@ export const err = {
   assignFormat: "Solicitud de asignación no válida",
   scopeInvalid: "Revise el ámbito (scope)",
   checkInput: "Revise los datos",
-  what: { item: "Elemento", table: "Tabla", account: "Cuenta" },
+  what: { item: "Elemento", table: "Tabla", account: "Cuenta", message: "Mensaje", link: "Enlace personal" },
   table: {
     facilities: "Instalaciones",
     homestays: "Familias de acogida",
@@ -74,6 +74,20 @@ export const err = {
   users: {
     selfDemote: "No puede quitarse sus propios permisos de administrador.",
     selfDelete: "No puede eliminar su propia cuenta.",
+  },
+  msg: {
+    targetForbidden: "No tienes permiso para enviar mensajes a este destinatario.",
+    noRecipients: "Nadie recibiría este mensaje. Vuelve a elegir los destinatarios.",
+    tooMany: "Demasiados destinatarios (máx. {max}). Envíalo en partes.",
+  },
+  push: {
+    endpoint: "Esta dirección de servicio de notificaciones no es compatible.",
+    disabled: "El servidor no tiene configuración de notificaciones (VAPID). Contacta con un administrador.",
+  },
+  link: {
+    invalid: "Este enlace ha caducado o no es válido. Pide un enlace nuevo a la parroquia.",
+    tooMany: "Demasiados intentos. Inténtalo de nuevo en un momento.",
+    required: "Inicia sesión o abre tu enlace personal.",
   },
   qna: {
     input: "Introduzca su nombre y la pregunta (nombre hasta 40 y pregunta hasta 1.000 caracteres).",

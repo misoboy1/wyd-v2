@@ -12,7 +12,7 @@
 // 연결 규칙(기존 앱과 동일): 방문자 숙소 = room(교리실 이름) → hsid(가정 번호) → homestay(대표자명, 동명이면 처음 나오는 가정)
 // 연결하지 못한 값은 orphanStay 에 보존하고 migration-report.csv 에 기록
 import { writeFileSync, readFileSync } from "node:fs";
-import { sql } from "drizzle-orm";
+import { inArray, sql } from "drizzle-orm";
 import { normDate, normSex, VIRTUAL, isSleepRoom, toStr } from "@wyd/shared";
 import { db, sqlClient } from "../db/client.js";
 import * as S from "../db/schema.js";
@@ -101,6 +101,11 @@ async function main() {
       S.gori,
     ];
     if (REPLACE) {
+      // 순례자·봉사자 id가 1부터 다시 쓰이므로, 옛 id를 가리키던 개인 링크·푸시 구독·수신 기록을 먼저 지움(다른 사람에게 이어지지 않게)
+      const persons = ["visitor", "volunteer"];
+      await tx.delete(S.personalLinks);
+      await tx.delete(S.pushSubscriptions).where(inArray(S.pushSubscriptions.kind, persons));
+      await tx.delete(S.messageRecipients).where(inArray(S.messageRecipients.kind, persons));
       // TRUNCATE … CASCADE는 users(homestay_id FK)까지 비우므로 쓰지 않음 → 의존 순서대로 DELETE 후 id 시퀀스 초기화
       const order = [
         "post_comments",

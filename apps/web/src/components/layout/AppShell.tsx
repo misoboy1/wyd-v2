@@ -16,6 +16,7 @@ import {
   SunMoon,
   UserRound,
   KeyRound,
+  Bell,
   X,
 } from "lucide-react";
 import { LOCALES, LOCALE_NAMES, WYD_OPEN, PARISH } from "@wyd/shared";
@@ -23,6 +24,7 @@ import { NAV_GROUPS, NAV_ITEMS, MOBILE_TABS, type NavItem } from "@/lib/nav";
 import { useAuth } from "@/lib/auth";
 import { useT } from "@/lib/i18n";
 import { useTheme } from "@/lib/theme";
+import { useInbox } from "@/lib/messages";
 import { cn, daysBetween } from "@/lib/utils";
 import { navLabelEn, todayKST, type MsgKey } from "@wyd/shared";
 import { Menu, MenuItem, MenuLabel, MenuSep } from "@/components/ui/menu";
@@ -170,6 +172,30 @@ function LangButton() {
   );
 }
 
+/** 메시지 아이콘 + 안읽음 수 — 로그인 계정은 /inbox, 개인 링크로 연결된 기기는 /me */
+function InboxButton() {
+  const { t } = useT();
+  const nav = useNavigate();
+  const { mode, unread } = useInbox();
+  if (!mode) return null;
+  return (
+    <Button
+      variant="ghost"
+      size="icon"
+      className="relative"
+      aria-label={unread ? t("inbox.bellUnread", { n: unread }) : t("inbox.bell")}
+      onClick={() => void nav(mode === "user" ? "/inbox" : "/me")}
+    >
+      <Bell />
+      {unread > 0 && (
+        <span className="absolute top-1 right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-bad px-1 text-[10.5px] leading-none font-bold text-white tabular">
+          {unread > 99 ? "99+" : unread}
+        </span>
+      )}
+    </Button>
+  );
+}
+
 function UserButton() {
   const { user, logout, setLoginOpen } = useAuth();
   const { t, label } = useT();
@@ -306,6 +332,7 @@ export function AppShell() {
           <DdayBadge />
           <LangButton />
           <ThemeButton />
+          <InboxButton />
           <UserButton />
         </div>
       </header>

@@ -13,6 +13,8 @@ import {
   MapPin,
   Flower2,
   ShieldCheck,
+  Mail,
+  QrCode,
   type LucideIcon,
 } from "lucide-react";
 import { VOLUNTEER_VIEW_ROLES, type NavKey, type Role } from "@wyd/shared";
@@ -30,7 +32,7 @@ export interface NavGroup {
   items: NavItem[];
 }
 
-/** 13개 기존 탭 + 계정 관리. auth: 로그인 필요 */
+/** 13개 기존 탭 + 메시지·개인 링크·계정 관리. auth: 로그인 필요 */
 export const NAV_GROUPS: NavGroup[] = [
   {
     label: "nav.group.ops",
@@ -58,6 +60,7 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     label: "nav.group.comm",
     items: [
+      { path: "/inbox", label: "nav.inbox", icon: Mail, auth: true },
       { path: "/notices", label: "nav.notices", icon: Megaphone },
       { path: "/posts", label: "nav.posts", icon: MessagesSquare, auth: true },
       { path: "/qna", label: "nav.qna", icon: CircleHelp },
@@ -65,7 +68,13 @@ export const NAV_GROUPS: NavGroup[] = [
     ],
   },
   { label: "nav.group.prayer", items: [{ path: "/gori", label: "nav.gori", icon: Flower2 }] },
-  { label: "nav.group.admin", items: [{ path: "/admin/users", label: "nav.users", icon: ShieldCheck, auth: true, roles: ["admin"] }] },
+  {
+    label: "nav.group.admin",
+    items: [
+      { path: "/admin/links", label: "nav.links", icon: QrCode, auth: true, roles: ["admin"] },
+      { path: "/admin/users", label: "nav.users", icon: ShieldCheck, auth: true, roles: ["admin"] },
+    ],
+  },
 ];
 export const NAV_ITEMS = NAV_GROUPS.flatMap((g) => g.items);
 export const MOBILE_TABS = ["/", "/visitors", "/homestays", "/gori"];

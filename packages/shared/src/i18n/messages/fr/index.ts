@@ -13,5 +13,6 @@ import { board } from "./board.js";
 import { users } from "./users.js";
 import { err } from "./err.js";
 import { valid } from "./valid.js";
+import { inbox } from "./inbox.js";
 
-export const dict = { common, enums, nav, shell, dash, gori, stay, org, board, users, err, valid } satisfies Shape<Dict>;
+export const dict = { common, enums, nav, shell, dash, gori, stay, org, board, users, inbox, err, valid } satisfies Shape<Dict>;

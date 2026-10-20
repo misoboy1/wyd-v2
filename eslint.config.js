@@ -56,6 +56,7 @@ export default tseslint.config(
     rules: { ...tseslint.configs.disableTypeChecked.rules, "no-console": "off" },
   },
   { files: ["scripts/load/**"], languageOptions: { globals: { __ENV: "readonly" } } },
+  { files: ["apps/web/public/sw.js"], languageOptions: { globals: { ...globals.serviceworker } } },
 
   // ── WEB ─────────────────────────────────────────────────────────
   {

@@ -15,4 +15,6 @@ export const nav = {
   places: "추천 장소·지도",
   gori: "고리기도 일정",
   users: "계정 관리",
+  inbox: "메시지",
+  links: "개인 링크·QR",
 };

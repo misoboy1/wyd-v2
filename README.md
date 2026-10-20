@@ -135,6 +135,18 @@ git pull && docker compose up -d --build   # DB 마이그레이션은 api 기동
 | 로그 | `docker compose logs -f api` / `web` / `ngrok` |
 | 자원 확인 | `docker stats` (db 256MB · api 256MB · web 64MB 상한) |
 
+### 메시지 · 휴대폰 알림
+
+- **보내기**: 상단 🔔 → `메시지` 화면 → "메시지 보내기". 받는 사람은 계정·역할 전체·팀·홈스테이 가정(가정+숙박 순례자)·순례자 그룹·순례자·봉사자 개별로 고릅니다.
+  - 관리자는 누구에게나 보낼 수 있습니다. 분과 책임자는 자기 팀(팀 계정·봉사자)과 관리자에게, 홈스테이 가정은 자기 집 순례자와 관리자에게 보낼 수 있습니다.
+- **계정 없는 순례자·봉사자**: 관리자가 `개인 링크·QR` 화면에서 링크를 발급해 QR 카드를 인쇄해 나눠 줍니다. QR을 열면 `/me` 화면에서 메시지를 보고 알림을 켤 수 있습니다.
+  - 링크 원문은 발급할 때만 보입니다. 다시 인쇄하려면 재발급해야 하고, 재발급하면 이전 QR과 그 기기의 알림이 끊깁니다.
+- **휴대폰 알림(웹 푸시)**: 각 화면의 "알림 켜기". Android는 Chrome에서 바로 됩니다. 아이폰(iOS 16.4 이상)은 Safari 공유 → "홈 화면에 추가" 후 그 아이콘으로 열어야 합니다.
+- **서버 설정**: `.env`에 `VAPID_PUBLIC_KEY`·`VAPID_PRIVATE_KEY`(`npx web-push generate-vapid-keys`로 한 번 생성)와 `VAPID_SUBJECT`(연락용 `mailto:`)를 넣습니다. 비워 두면 알림만 꺼지고 수신함은 동작합니다.
+  - 키를 바꾸거나 **도메인이 바뀌면 모든 기기가 알림을 다시 켜야 합니다**. ngrok 무료 도메인은 첫 방문 경고 화면 때문에 홈 화면 추가가 불편할 수 있으니, 실제 운영 전에 고정 도메인(Cloudflare Tunnel 등)으로 옮기는 것을 권장합니다.
+
+- **데이터 이관(`migrate:sheets --replace`) 후에는 api를 재시작**하세요(`docker compose restart api`). 순례자·봉사자 번호(id)가 1부터 다시 쓰이므로 개인 링크는 모두 지워지고 재발급이 필요합니다. 재시작은 실행 중인 서버의 신원 캐시를 비웁니다.
+
 감사 로그: 모든 추가·수정·삭제·배정은 `audit_log` 표에 누가·언제·무엇을(변경 전후) 기록됩니다.
 
 ### 권한
@@ -185,7 +197,11 @@ k6 run -e BASE=https://<도메인> -e USER=admin -e PASS=… scripts/load/k6-mix
 | `POST /qna/ask` | 비로그인 질문(IP당 10분 5건) |
 | `POST /gori/:id/photo?version=` | 고리기도 사진(multipart `file`) |
 | `GET /wyd-status`, `POST /wyd-status/sync` | 묵주기도 봉헌 현황 |
-| `GET /events` | 실시간 변경 알림(SSE) |
+| `GET /events` | 실시간 변경 알림(SSE). 받는 사람이 정해진 이벤트(새 메시지)는 해당 계정·개인 링크 연결에만 |
+| `POST /messages`, `GET /messages/inbox·sent·directory`, `POST /messages/read`, `DELETE /messages/:id` | 메시지(로그인). `dryRun: true`면 받을 인원만 계산 |
+| `POST /p/link·read·unlink`, `GET /p/me·inbox` | 개인 링크(순례자·봉사자) — 토큰을 쿠키(`wyd_pt`)로 바꿔 사용 |
+| `GET/POST /links`, `DELETE /links/:kind/:id` | 개인 링크 발급·폐기(관리자) |
+| `GET /push/key`, `POST /push/subscribe·unsubscribe` | 웹 푸시 구독(브라우저 푸시 서비스 주소만 허용) |
 | `POST /auth/login·refresh·logout·password`, `GET /auth/me` | 로그인 |
 | `GET/POST/PATCH/DELETE /users` | 계정 관리(관리자) |
 | `GET /health` | 상태 확인 |

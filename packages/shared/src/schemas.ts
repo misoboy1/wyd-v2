@@ -172,6 +172,48 @@ export type SchemaTable = keyof typeof schemas;
 export const publicQuestionSchema = z.object({ author: z.string().trim().min(1).max(40), q: z.string().trim().min(1).max(1000) });
 export const loginSchema = z.object({ username: z.string().trim().min(1).max(60), password: z.string().min(1).max(200) });
 
+// ── 메시지(수신함) ── 받는 사람은 서버가 대상(k)을 풀어 사람 단위로 만든다
+const posId = z.number().int().positive();
+export const messageTargetSchema = z.discriminatedUnion("k", [
+  z.object({ k: z.literal("user"), id: posId }),
+  z.object({ k: z.literal("role"), role: z.enum(["admin", "dept", "host"]) }),
+  z.object({ k: z.literal("team"), team: z.string().trim().min(1).max(60) }),
+  z.object({ k: z.literal("homestay"), id: posId }),
+  z.object({ k: z.literal("group"), gno: z.string().trim().min(1).max(20) }),
+  z.object({ k: z.literal("visitor"), id: posId }),
+  z.object({ k: z.literal("volunteer"), id: posId }),
+  z.object({ k: z.literal("allVisitors") }),
+  z.object({ k: z.literal("allVolunteers") }),
+]);
+export type MessageTarget = z.infer<typeof messageTargetSchema>;
+/** 한 번에 받을 수 있는 최대 인원 — 순례자 1,500명 + 봉사자·계정 여유 */
+export const MESSAGE_MAX_RECIPIENTS = 3000;
+export const messageSchema = z.object({
+  title: z.string().trim().min(1, "valid.titleRequired").max(100),
+  body: z.string().trim().min(1, "valid.bodyRequired").max(2000),
+  // 앱 안 경로("/schedule") 또는 https 주소만 — javascript: 등 차단
+  link: z
+    .string()
+    .trim()
+    .max(300)
+    .regex(/^(\/(?![/\\])\S*|https:\/\/\S+)?$/, "valid.linkFormat")
+    .default(""),
+  to: z.array(messageTargetSchema).min(1, "valid.recipientsRequired").max(200),
+  /** true면 저장하지 않고 받을 인원만 계산 */
+  dryRun: z.boolean().default(false),
+});
+
+/** 브라우저 PushSubscription.toJSON() 중 서버에 필요한 부분 */
+export const pushSubscriptionSchema = z.object({
+  endpoint: z.string().trim().max(1000).startsWith("https://"),
+  keys: z.object({ p256dh: z.string().min(1).max(200), auth: z.string().min(1).max(100) }),
+});
+
+/** 개인 링크(계정 없는 순례자·봉사자) */
+export const PERSON_KINDS = ["visitor", "volunteer"] as const;
+export type PersonKind = (typeof PERSON_KINDS)[number];
+export const linkIssueSchema = z.object({ kind: z.enum(PERSON_KINDS), ids: z.array(posId).min(1).max(200) });
+
 /** zod issue → 번역 키(valid.*)+파라미터. 스키마에 직접 쓴 "valid.*" 메시지는 그대로, 그 외 zod 기본 메시지는 코드별 일반 문구로 */
 export function issueMsg(issue: { code: string; message: string; origin?: unknown; minimum?: unknown; maximum?: unknown }): {
   key: string;

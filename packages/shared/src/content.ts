@@ -1829,6 +1829,11 @@ export function teamInfo(v) {
   return { team: NO_TEAM, raw, mapped: false, unknown: true };
 }
 export const teamOf = (v) => teamInfo(v).team;
+/** 두 팀 이름이 같은 조직도 팀인지 — 매핑 안 되는 이름은 모두 '팀 미배정'이 되므로 그 경우는 같은 팀으로 보지 않음(메시지 권한) */
+export const isSameTeam = (a, b) => {
+  const x = teamInfo({ team: a }).team;
+  return x !== NO_TEAM && x === teamInfo({ team: b }).team;
+};
 export const teamOrder = (t) => {
   const i = TEAM_NAMES.indexOf(t);
   return i < 0 ? 99 : i;

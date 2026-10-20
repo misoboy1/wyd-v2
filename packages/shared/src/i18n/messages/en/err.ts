@@ -23,7 +23,7 @@ export const err = {
   assignFormat: "Invalid assignment request",
   scopeInvalid: "Check the scope",
   checkInput: "Check your input",
-  what: { item: "Item", table: "Table", account: "Account" },
+  what: { item: "Item", table: "Table", account: "Account", message: "Message", link: "Personal link" },
   table: {
     facilities: "Facilities",
     homestays: "Host families",
@@ -74,6 +74,20 @@ export const err = {
   users: {
     selfDemote: "You cannot remove your own admin rights.",
     selfDelete: "You cannot delete your own account.",
+  },
+  msg: {
+    targetForbidden: "You don't have permission to message this recipient.",
+    noRecipients: "No one would receive this. Please choose recipients again.",
+    tooMany: "Too many recipients (max {max}). Please send in smaller batches.",
+  },
+  push: {
+    endpoint: "This notification service address isn't supported.",
+    disabled: "The server has no notification (VAPID) settings. Please contact an administrator.",
+  },
+  link: {
+    invalid: "This link has expired or is invalid. Please ask the parish for a new link.",
+    tooMany: "Too many attempts. Please try again shortly.",
+    required: "Please log in or open your personal link.",
   },
   qna: {
     input: "Enter your name and question (name up to 40, question up to 1,000 characters).",
