@@ -39,6 +39,7 @@ export const err = {
     qna: "Q&A",
     places: "Places",
     gori: "Prayer chain",
+    teamChats: "Team chat",
   },
   dup: {
     facilityName: "A facility with the same name already exists.",
@@ -47,6 +48,7 @@ export const err = {
     deptName: "A division/zone with the same name already exists.",
     username: "The same login ID already exists.",
     link: "Another issue was in progress at the same time. Refresh the list and issue again.",
+    teamChat: "This team already has a chat room. Refresh and edit it instead.",
     other: "A duplicate value already exists.",
   },
   stay: {

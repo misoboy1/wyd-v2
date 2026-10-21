@@ -203,5 +203,11 @@ export const shell = {
       rep: "대표자 (이름 + 세례명)",
       note: "비고 (선택 · 공휴일 등)",
     },
+    teamChats: {
+      title: "팀 오픈채팅방",
+      team: "팀",
+      url: "오픈채팅방 링크",
+      code: "참여코드 (선택)",
+    },
   },
 };

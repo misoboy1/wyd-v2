@@ -140,6 +140,19 @@ export const officers = pgTable("officers", {
   ...audit,
 });
 
+// 팀별 카카오톡 오픈채팅방 — 팀은 상수(WYD_TEAMS)라 팀 이름으로 묶음(팀당 하나)
+export const teamChats = pgTable(
+  "team_chats",
+  {
+    id: serial("id").primaryKey(),
+    team: text("team").notNull(),
+    url: text("url").notNull(),
+    code: t("code"),
+    ...audit,
+  },
+  (x) => [uniqueIndex("team_chats_team_uq").on(x.team)],
+);
+
 export const schedule = pgTable("schedule", {
   id: serial("id").primaryKey(),
   date: t("date"),

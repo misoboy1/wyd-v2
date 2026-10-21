@@ -7,7 +7,7 @@ import { TABLE_NAMES, translateDynamic, type Dataset, type TableName } from "@wy
 import { api, ApiError } from "./api";
 import { useAuth, useCan, AUTH_TABLES } from "./auth";
 import { getLocale, tt } from "./i18n";
-import { inboxKey, sentKey, usePerson } from "./messages";
+import { inboxKey, personChatKey, sentKey, usePerson } from "./messages";
 
 /** 서버·검증 메시지 키를 현재 언어로(키가 아니면 그대로) */
 const tdNow = (k: string) => translateDynamic(getLocale(), k);
@@ -133,6 +133,8 @@ export function useLiveUpdates() {
           // 수신함·보낸 목록은 표가 아니라 사람별 조회 — 바로 무효화
           if (e.tables.includes("inbox")) void qc.invalidateQueries({ queryKey: inboxKey });
           if (e.tables.includes("sent")) void qc.invalidateQueries({ queryKey: sentKey });
+          // 개인 링크 봉사자의 팀 채팅방은 표 조회가 아니라 /p/chat — 채팅방 변경 시 함께 갱신
+          if (e.tables.includes("teamChats")) void qc.invalidateQueries({ queryKey: personChatKey });
           if (e.msg)
             toast.info(tt("inbox.toastNew", { title: e.msg.title }), {
               action: { label: tt("inbox.toastView"), onClick: () => void nav.current(uid != null ? "/inbox" : "/me") },

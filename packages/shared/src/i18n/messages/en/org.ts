@@ -199,4 +199,17 @@ export const org = {
     grouped: "Group by team",
     shown: "Showing {n} of {total}",
   },
+  chat: {
+    open: "Open chat",
+    mine: "Our team chat",
+    code: "Entry code",
+    copy: "Copy code",
+    copied: "Entry code copied.",
+    hint: "Opens in the KakaoTalk app.",
+    register: "Add chat room",
+    edit: "Edit chat room",
+    dlgTitle: "{team} open chat",
+    dlgDesc:
+      "Paste the link of the open chat room you created in KakaoTalk (https://open.kakao.com/o/…). If you set an entry code, enter it too. Only this team's members and admins can see it.",
+  },
 } satisfies Shape<typeof ko>;

@@ -201,4 +201,17 @@ export const org = {
     grouped: "Regrouper par équipe",
     shown: "{n} affichés sur {total}",
   },
+  chat: {
+    open: "Ouvrir le chat",
+    mine: "Chat de notre équipe",
+    code: "Code d'accès",
+    copy: "Copier le code",
+    copied: "Code d'accès copié.",
+    hint: "S'ouvre dans l'appli KakaoTalk.",
+    register: "Ajouter un salon",
+    edit: "Modifier le salon",
+    dlgTitle: "Chat ouvert de {team}",
+    dlgDesc:
+      "Collez le lien du chat ouvert créé dans KakaoTalk (https://open.kakao.com/o/…). Si vous avez défini un code d'accès, saisissez-le aussi. Seuls les membres de cette équipe et les administrateurs le voient.",
+  },
 } satisfies Shape<typeof ko>;

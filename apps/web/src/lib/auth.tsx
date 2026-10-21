@@ -20,7 +20,7 @@ interface AuthCtx {
 const Ctx = createContext<AuthCtx | null>(null);
 
 /** 로그인해야 볼 수 있는 표(서버 REGISTRY.read === "auth"와 동일) */
-export const AUTH_TABLES: TableName[] = ["facilities", "homestays", "visitors", "volunteers", "posts", "postComments"];
+export const AUTH_TABLES: TableName[] = ["facilities", "homestays", "visitors", "volunteers", "posts", "postComments", "teamChats"];
 
 /** 사용자 전환: 표는 첫 일괄 로딩(/api/data)이 새로 채우므로 표별 재요청은 하지 않음 */
 function refreshForUser(qc: QueryClient) {

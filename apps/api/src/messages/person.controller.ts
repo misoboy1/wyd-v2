@@ -65,6 +65,11 @@ export class PersonController {
     return { person: p, limited };
   }
 
+  /** 봉사자 자기 팀 카카오톡 오픈채팅방(없으면 null) */
+  @Get("chat") async chat(@Req() req: FastifyRequest, @Res({ passthrough: true }) reply: FastifyReply) {
+    return { chat: await this.persons.chat(await this.must(req, reply)) };
+  }
+
   @Post("unlink")
   @HttpCode(200)
   unlink(@Res({ passthrough: true }) reply: FastifyReply) {

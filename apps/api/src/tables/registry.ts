@@ -88,6 +88,15 @@ export const REGISTRY: Record<TableName, TableDef> = {
   qna: { table: S.qna, schema: schemas.qna, read: "public", order: ["date", "id"], label: "err.table.qna" },
   places: { table: S.places, schema: schemas.places, read: "public", order: ["sort", "id"], label: "err.table.places" },
   gori: { table: S.gori, schema: schemas.gori, read: "public", order: ["date"], label: "err.table.gori" },
+  teamChats: {
+    table: S.teamChats,
+    schema: schemas.teamChats,
+    read: "auth",
+    order: ["team"],
+    label: "err.table.teamChats",
+    // 오픈채팅 주소는 아는 사람 누구나 들어올 수 있으므로 자기 팀 것만(관리자는 전부). 쓰기는 관리자만(canWrite 없음)
+    scope: (u) => (u.role === "admin" ? null : (r) => sameTeam(u, r)),
+  },
 };
 
 export function canWrite(def: TableDef, u: AuthUser | undefined, before: Row | null, after: Row | null): boolean {

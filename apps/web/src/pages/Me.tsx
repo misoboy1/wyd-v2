@@ -10,8 +10,9 @@ import { Field, Input } from "@/components/ui/input";
 import { confirm } from "@/components/ui/confirm";
 import { MessageList } from "@/components/inbox/MessageList";
 import { PushCard } from "@/components/inbox/PushCard";
+import { TeamChatBar } from "@/components/org/TeamChatButton";
 import { api, type ApiError } from "@/lib/api";
-import { personKey, useInbox, usePerson, type PersonState } from "@/lib/messages";
+import { personKey, useInbox, usePerson, usePersonChat, type PersonState } from "@/lib/messages";
 import { dropDevicePush } from "@/lib/push";
 import { useT } from "@/lib/i18n";
 
@@ -44,6 +45,7 @@ export default function Me() {
   const [paste, setPaste] = useState("");
   const [busy, setBusy] = useState(false);
   useMeManifest();
+  const chat = usePersonChat(person);
 
   const connect = async (token: string) => {
     if (!token) return;
@@ -130,6 +132,7 @@ export default function Me() {
         }
       />
       {error && <p className="mb-3 rounded-lg bg-bad-soft px-3 py-2 text-[13px] text-bad">{error}</p>}
+      {chat && <TeamChatBar team={chat.team} chat={chat} />}
       <PushCard owner={`${person.kind}:${person.id}`} asPerson />
       <MessageList rows={inbox.rows} isLoading={inbox.isLoading} asPerson />
     </div>

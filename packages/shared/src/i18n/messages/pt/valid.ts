@@ -28,4 +28,5 @@ export const valid = {
   invalidOption: "valor não permitido",
   invalidFormat: "formato inválido",
   invalid: "entrada inválida",
+  kakaoOpenUrl: "um link de chat aberto como https://open.kakao.com/o/…",
 } satisfies Shape<typeof ko>;

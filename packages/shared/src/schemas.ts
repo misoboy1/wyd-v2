@@ -1,6 +1,7 @@
 // 입력 검증(zod) — API DTO 검증과 프론트 폼 검증에서 공용
 import { z } from "zod";
 import { toStr } from "./text.js";
+import { TEAM_NAMES } from "./content.js";
 // 성별 라벨만 필요하므로 언어별 enums 사전만 직접 가져온다(전체 사전 지연 로딩과 무관하게 항상 인식)
 import { enums as enumsKo } from "./i18n/messages/ko/enums.js";
 import { enums as enumsEn } from "./i18n/messages/en/enums.js";
@@ -22,6 +23,14 @@ const idRef = z
   .union([z.number().int().positive(), z.null()])
   .nullish()
   .transform((v) => v ?? null);
+
+/** 카카오톡 오픈채팅(그룹) 주소만 — 다른 사이트·javascript: 주소가 버튼 링크로 들어가지 않게. 쿼리·끝 슬래시는 정리 */
+export const KAKAO_OPEN_RE = /^https:\/\/open\.kakao\.com\/o\/[A-Za-z0-9]+$/;
+const kakaoOpenUrl = z
+  .string()
+  .trim()
+  .transform((v) => v.replace(/[?#].*$/, "").replace(/\/+$/, ""))
+  .refine((v) => KAKAO_OPEN_RE.test(v), "valid.kakaoOpenUrl");
 
 export const SEX_VALUES = ["", "남", "여"] as const;
 /** 엑셀 등에서 들어온 성별 표기 정규화 */
@@ -164,6 +173,11 @@ export const schemas = {
     rep: str(100),
     note: str(300),
     photo: str(500),
+  }),
+  teamChats: z.object({
+    team: z.enum(TEAM_NAMES as [string, ...string[]], "valid.invalidOption"),
+    url: kakaoOpenUrl,
+    code: str(20),
   }),
 } as const;
 

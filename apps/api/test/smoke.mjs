@@ -438,6 +438,71 @@ try {
   await call("DELETE", `/links/visitor/${pv2.id}`);
   await call("DELETE", `/links/visitor/${pv.id}`);
   await call("DELETE", `/messages/${toV.body.id}`);
+
+  // 팀 카카오톡 오픈채팅방 — 관리자만 등록, 읽기는 자기 팀(관리자 전부), 주소는 open.kakao.com/o/만
+  {
+    // 실행 대상 DB에 실제 등록된 두 팀 채팅방은 잠시 치웠다가 끝에 그대로 되돌림
+    const prev = (await call("GET", "/t/teamChats")).body.filter((c) => c.team === "환대팀" || c.team === "시설팀");
+    for (const c of prev) await call("DELETE", `/t/teamChats/${c.id}?version=${c.version}`);
+    const made = [];
+    let cv = null;
+    try {
+      const mine = await call("POST", "/t/teamChats", { team: "환대팀", url: " https://open.kakao.com/o/smokeA1/?x=1 ", code: "1234" });
+      made.push(mine.body?.id);
+      ok(mine.status === 201 && mine.body?.url === "https://open.kakao.com/o/smokeA1", "관리자: 팀 채팅방 등록(주소 정리)", mine.body);
+      const other = await call("POST", "/t/teamChats", { team: "시설팀", url: "https://open.kakao.com/o/smokeB2" });
+      made.push(other.body?.id);
+      ok(other.status === 201, "관리자: 다른 팀 채팅방 등록", other.body);
+      for (const bad of ["https://evil.com/o/x", "javascript:alert(1)", "https://open.kakao.com.evil.com/o/x"]) {
+        const r = await call("POST", "/t/teamChats", { team: "전례팀", url: bad });
+        ok(r.status === 400, `오픈채팅이 아닌 주소 거부: ${bad}`, r.body);
+      }
+      const dup = await call("POST", "/t/teamChats", { team: "환대팀", url: "https://open.kakao.com/o/smokeC3" });
+      ok(dup.status === 409, "같은 팀 채팅방 두 번 등록 → 409", dup.body);
+      const dRead = await call("GET", "/t/teamChats", undefined, { cookie: deptC });
+      ok(
+        dRead.status === 200 && dRead.body.length >= 1 && dRead.body.every((c) => c.team === "환대팀"),
+        "dept: 자기 팀 채팅방만 받음",
+        dRead.body,
+      );
+      const dWrite = await call("POST", "/t/teamChats", { team: "환대팀", url: "https://open.kakao.com/o/smokeD4" }, { cookie: deptC });
+      ok(dWrite.status === 403, "dept: 채팅방 등록 거부", dWrite.body);
+      const anon = await call("GET", "/t/teamChats", undefined, { cookie: "" });
+      ok(anon.status === 401, "비로그인: 채팅방 목록 거부", anon.status);
+      // 봉사자 개인 링크 → 자기 팀 채팅방, 순례자는 null
+      const linkCookie = async (kind, id) => {
+        const tok = (await call("POST", "/links", { kind, ids: [id] })).body?.[0]?.token;
+        const r = await fetch(A + "/p/link", {
+          method: "POST",
+          headers: { "content-type": "application/json", "x-wyd": "1" },
+          body: JSON.stringify({ token: tok }),
+        });
+        return (r.headers.getSetCookie?.() ?? []).map((c) => c.split(";")[0]).join("; ");
+      };
+      cv = (await call("POST", "/t/volunteers", { name: "smoke 채팅", team: "환대팀" })).body;
+      const vc = await linkCookie("volunteer", cv.id);
+      const pc = await linkCookie("visitor", pv.id);
+      const vChat = await call("GET", "/p/chat", undefined, { cookie: vc });
+      ok(
+        vChat.body?.chat?.url === "https://open.kakao.com/o/smokeA1" && vChat.body.chat.code === "1234",
+        "봉사자 개인 링크: 자기 팀 채팅방",
+        vChat.body,
+      );
+      const pChat = await call("GET", "/p/chat", undefined, { cookie: pc });
+      ok(pChat.status === 200 && pChat.body?.chat === null, "순례자 개인 링크: 채팅방 없음(null)", pChat.body);
+      const noChat = await call("GET", "/p/chat", undefined, { cookie: "" });
+      ok(noChat.status === 403, "개인 링크 없이 /p/chat → 403", noChat.status);
+    } finally {
+      if (cv?.id) {
+        await call("DELETE", `/links/volunteer/${cv.id}`);
+        await call("DELETE", `/t/volunteers/${cv.id}?version=${cv.version}`);
+      }
+      await call("DELETE", `/links/visitor/${pv.id}`);
+      const now = (await call("GET", "/t/teamChats")).body.filter((c) => made.includes(c.id));
+      for (const c of now) await call("DELETE", `/t/teamChats/${c.id}?version=${c.version}`);
+      for (const c of prev) await call("POST", "/t/teamChats", { team: c.team, url: c.url, code: c.code });
+    }
+  }
 } finally {
   for (const u of temp) if (u?.id) await call("DELETE", `/users/${u.id}`);
 }

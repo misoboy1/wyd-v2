@@ -81,7 +81,9 @@ export function mapDbError(e: unknown): unknown {
               ? "deptName"
               : c.includes("username")
                 ? "username"
-                : "other";
+                : c.includes("team_chats_team")
+                  ? "teamChat"
+                  : "other";
     return Duplicate(`err.dup.${key}`);
   }
   return e;

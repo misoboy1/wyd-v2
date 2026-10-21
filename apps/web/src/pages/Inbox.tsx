@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { teamInfo } from "@wyd/shared";
 import { Mail, Send, Trash2, UserRound } from "lucide-react";
 import { Empty, PageHeader, Segmented, Skeleton } from "@/components/ui/misc";
 import { Button } from "@/components/ui/button";
@@ -7,9 +8,11 @@ import { confirm } from "@/components/ui/confirm";
 import { MessageList } from "@/components/inbox/MessageList";
 import { PushCard } from "@/components/inbox/PushCard";
 import { ComposeDialog } from "@/components/inbox/ComposeDialog";
+import { TeamChatBar } from "@/components/org/TeamChatButton";
 import { useTargets } from "@/components/inbox/targets";
 import { useDeleteMessage, useInbox, useSent } from "@/lib/messages";
 import { useCan } from "@/lib/auth";
+import { useTable } from "@/lib/data";
 import { useT } from "@/lib/i18n";
 
 /** 메시지 — 받은 메시지(로그인 계정)·보낸 메시지·보내기. 계정 없는 순례자·봉사자는 /me */
@@ -22,6 +25,13 @@ export default function Inbox() {
   const sent = useSent(tab === "sent");
   const { nameOf } = useTargets(tab === "sent");
   const del = useDeleteMessage();
+  // 내 팀 오픈채팅방(관리자는 모든 팀을 받지만 여기서는 자기 팀 것만)
+  const { rows: chatRows } = useTable("teamChats");
+  const myChat = useMemo(() => {
+    if (!user?.team) return null;
+    const mine = teamInfo({ team: user.team }).team;
+    return chatRows.find((c) => c.team === mine) ?? null;
+  }, [chatRows, user?.team]);
 
   const remove = async (id: number, title: string) => {
     if (
@@ -43,6 +53,7 @@ export default function Inbox() {
           </Button>
         }
       />
+      {myChat && <TeamChatBar team={myChat.team} chat={myChat} />}
       <PushCard owner={user ? `user:${user.id}` : ""} />
       <Segmented
         className="mb-3"

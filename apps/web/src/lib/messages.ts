@@ -1,7 +1,7 @@
 // 메시지 데이터 — 수신함(로그인 계정 /messages, 개인 링크 /p)·보내기·보낸 목록. 갱신은 SSE(inbox·sent 이벤트)로 무효화
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import type { InboxMessage, MessageTarget, PersonMe, Role, SentMessage } from "@wyd/shared";
+import type { InboxMessage, MessageTarget, PersonChat, PersonMe, Role, SentMessage } from "@wyd/shared";
 import { api, type ApiError } from "./api";
 import { useAuth } from "./auth";
 import { tt } from "./i18n";
@@ -9,6 +9,8 @@ import { tt } from "./i18n";
 export const inboxKey = ["inbox"] as const;
 export const sentKey = ["sent"] as const;
 export const personKey = ["person"] as const;
+/** 개인 링크 봉사자의 팀 오픈채팅방 — SSE teamChats 변경 시 무효화 */
+export const personChatKey = ["p", "chat"] as const;
 
 export interface PersonState {
   person: PersonMe | null;
@@ -128,4 +130,14 @@ export function useDeleteMessage() {
     },
     onError: (e: ApiError) => toast.error(e.message),
   });
+}
+
+/** 개인 링크 봉사자: 자기 팀 카카오톡 오픈채팅방(순례자·미등록이면 null) */
+export function usePersonChat(person: PersonMe | null) {
+  return useQuery({
+    queryKey: [...personChatKey, person?.kind, person?.id],
+    queryFn: () => api.get<{ chat: PersonChat }>("/p/chat"),
+    enabled: person?.kind === "volunteer",
+    staleTime: Infinity,
+  }).data?.chat;
 }

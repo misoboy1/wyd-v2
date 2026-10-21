@@ -25,4 +25,5 @@ export const valid = {
   invalidOption: "허용되지 않는 값",
   invalidFormat: "형식 확인",
   invalid: "입력 확인",
+  kakaoOpenUrl: "https://open.kakao.com/o/… 형식의 오픈채팅 링크",
 };

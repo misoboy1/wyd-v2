@@ -207,5 +207,11 @@ export const shell = {
       rep: "Représentant (nom + nom de baptême)",
       note: "Remarque (facultatif · jours fériés, etc.)",
     },
+    teamChats: {
+      title: "Chat ouvert de l'équipe",
+      team: "Équipe",
+      url: "Lien du chat ouvert",
+      code: "Code d'accès (facultatif)",
+    },
   },
 } satisfies Shape<typeof ko>;

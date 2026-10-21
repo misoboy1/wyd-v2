@@ -85,6 +85,12 @@ export interface Officer extends Base {
   note: string;
   sort: number;
 }
+/** 팀별 카카오톡 오픈채팅방(관리자 등록). 팀원·관리자만 받음 */
+export interface TeamChat extends Base {
+  team: string;
+  url: string;
+  code: string;
+}
 export interface ScheduleSlot {
   id: number;
   time: string;
@@ -149,6 +155,8 @@ export interface PersonMe {
   id: number;
   name: string;
 }
+/** 개인 링크 봉사자의 자기 팀 오픈채팅방(GET /p/chat) — 등록 안 됐거나 순례자면 null */
+export type PersonChat = Pick<TeamChat, "team" | "url" | "code"> | null;
 /** 개인 링크 발급 현황(GET /links) — 토큰은 발급 순간에만 응답 */
 export interface PersonalLinkInfo {
   kind: PersonKind;
@@ -217,6 +225,7 @@ export interface Dataset {
   qna: Qna[];
   places: Place[];
   gori: Gori[];
+  teamChats: TeamChat[];
 }
 export type TableName = keyof Dataset;
 export const TABLE_NAMES: TableName[] = [
@@ -234,4 +243,5 @@ export const TABLE_NAMES: TableName[] = [
   "qna",
   "places",
   "gori",
+  "teamChats",
 ];

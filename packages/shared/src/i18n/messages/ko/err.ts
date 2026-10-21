@@ -38,6 +38,7 @@ export const err = {
     qna: "Q&A",
     places: "장소",
     gori: "고리기도",
+    teamChats: "팀 채팅방",
   },
   dup: {
     facilityName: "같은 이름의 시설이 이미 있습니다.",
@@ -46,6 +47,7 @@ export const err = {
     deptName: "같은 이름의 분과·구역이 이미 있습니다.",
     username: "같은 로그인 아이디가 이미 있습니다.",
     link: "다른 발급이 동시에 진행되었습니다. 목록을 새로 고친 뒤 다시 발급하세요.",
+    teamChat: "이 팀에는 채팅방이 이미 등록되어 있습니다. 새로 고친 뒤 수정하세요.",
     other: "중복 값이 이미 있습니다.",
   },
   stay: {

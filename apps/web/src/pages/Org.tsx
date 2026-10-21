@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
-import { ChevronDown, ChevronUp, ClipboardPaste, Download, Network, Pencil, Plus, Printer, UserRound } from "lucide-react";
-import type { Officer } from "@wyd/shared";
+import { ChevronDown, ChevronUp, ClipboardPaste, Download, MessageCircle, Network, Pencil, Plus, Printer, UserRound } from "lucide-react";
+import type { Officer, TeamChat } from "@wyd/shared";
 import { NO_TEAM, TEAM_NAMES, WYD_TEAMS, isTeamLead, teamInfo, teamRange } from "@wyd/shared";
 import { PageHeader, Skeleton } from "@/components/ui/misc";
 import { Card } from "@/components/ui/card";
@@ -19,6 +19,7 @@ import { VolunteerDialog, useOwnTeam } from "@/components/org/VolunteerDialog";
 import { TeamAdminButtons, useTeamActions } from "@/components/org/teamActions";
 import { volExports, volPasteDef } from "@/components/org/exports";
 import { DeptSection, TargetSection } from "@/components/org/OrgRefs";
+import { TeamChatButton } from "@/components/org/TeamChatButton";
 
 // ── 임원(본당위원회) ─────────────────────────────────────────
 function OfficerNode({ o, head, onEdit }: { o: Officer; head?: boolean; onEdit?: () => void }) {
@@ -103,6 +104,11 @@ interface TeamRow {
   team: string;
   list: Vol[];
 }
+/** 팀 오픈채팅방 등록 창 필드(팀은 줄에서 정해져 고정) — 라벨은 shell.fields.teamChats.* */
+const CHAT_FIELDS = [
+  { k: "url", label: "", type: "text" },
+  { k: "code", label: "", type: "text", half: true },
+];
 /** 팀 미배정 행의 표시 정보(임무 안내는 화면에서 번역) */
 const NO_TEAM_INFO = { task: "", dept: "—", when: "—", noTeam: true };
 
@@ -115,6 +121,13 @@ export default function Org() {
   const actions = useTeamActions(vols);
   const byTeam = useMemo(() => volsByTeam(vols), [vols]);
   const teams = useMemo<TeamRow[]>(() => teamList(byTeam).map((t) => ({ team: t, list: byTeam[t] || [] })), [byTeam]);
+  // 팀 오픈채팅방 — 서버가 자기 팀 것만(관리자는 전부) 내려 줌
+  const { rows: chatRows } = useTable("teamChats");
+  const chats = useMemo(() => new Map(chatRows.map((c) => [c.team, c])), [chatRows]);
+  // 대상 팀은 닫는 동안에도 유지(닫힘 애니메이션 중 제목이 비지 않게) — 열림은 따로
+  const [chatEdit, setChatEdit] = useState<{ team: string; row?: TeamChat } | null>(null);
+  const [chatOpen, setChatOpen] = useState(false);
+  const chatDefaults = useMemo(() => ({ team: chatEdit?.team ?? "", url: "", code: "" }), [chatEdit?.team]);
 
   const [open, setOpen] = useState<Set<string>>(new Set());
   const [showAll, setShowAll] = useState(false);
@@ -155,6 +168,24 @@ export default function Org() {
                 </span>
               )}
             </div>
+            {(chats.get(team) || (isAdmin && team !== NO_TEAM)) && (
+              <div className="mt-2 flex flex-wrap items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                {chats.get(team) && <TeamChatButton chat={chats.get(team)!} />}
+                {isAdmin && team !== NO_TEAM && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => {
+                      setChatEdit({ team, row: chats.get(team) });
+                      setChatOpen(true);
+                    }}
+                  >
+                    {chats.get(team) ? <Pencil /> : <MessageCircle />}
+                    {chats.get(team) ? tr("org.chat.edit") : tr("org.chat.register")}
+                  </Button>
+                )}
+              </div>
+            )}
           </div>
         );
       },
@@ -432,6 +463,19 @@ export default function Org() {
 
       <VolunteerDialog open={!!edit} onOpenChange={(o) => !o && setEdit(null)} row={edit?.row} team={edit?.team} />
       <PasteImport def={pasteDef} open={paste} onOpenChange={setPaste} />
+      {isAdmin && (
+        <EditDialog
+          table="teamChats"
+          open={chatOpen}
+          onOpenChange={setChatOpen}
+          row={chatEdit?.row}
+          defaults={chatDefaults}
+          fields={CHAT_FIELDS}
+          size="md"
+          title={tr("org.chat.dlgTitle", { team: chatEdit?.team ?? "" })}
+          description={tr("org.chat.dlgDesc")}
+        />
+      )}
     </div>
   );
 }

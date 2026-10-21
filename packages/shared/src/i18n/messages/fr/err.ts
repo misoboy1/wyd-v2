@@ -39,6 +39,7 @@ export const err = {
     qna: "Questions",
     places: "Lieux",
     gori: "Chaîne de prière",
+    teamChats: "Chat d'équipe",
   },
   dup: {
     facilityName: "Une installation portant le même nom existe déjà.",
@@ -47,6 +48,7 @@ export const err = {
     deptName: "Une division/zone portant le même nom existe déjà.",
     username: "Le même identifiant de connexion existe déjà.",
     link: "Une autre émission était en cours au même moment. Actualisez la liste puis réessayez.",
+    teamChat: "Cette équipe a déjà un salon. Actualisez puis modifiez-le.",
     other: "Une valeur en double existe déjà.",
   },
   stay: {

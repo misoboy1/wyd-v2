@@ -37,6 +37,8 @@
   --warn-soft: #fff2dc;
   --bad: #c62828;
   --bad-soft: #fdeaea;
+  --kakao: #fee500; /* 카카오톡 브랜드 노랑 — 다크 모드에서도 같은 색(브랜드 규정) */
+  --kakao-ink: #191919;
   --series-room: #2a78d6; /* 교리실 (dataviz 슬롯1) */
   --series-hs: #eb6834; /* 홈스테이 (슬롯2) */
   --series-none: #c8ccd4; /* 미배정(중립) */
@@ -136,6 +138,8 @@
   --color-good-soft: var(--good-soft);
   --color-warn: var(--warn);
   --color-warn-soft: var(--warn-soft);
+  --color-kakao: var(--kakao);
+  --color-kakao-ink: var(--kakao-ink);
   --color-bad: var(--bad);
   --color-bad-soft: var(--bad-soft);
   --color-series-room: var(--series-room);

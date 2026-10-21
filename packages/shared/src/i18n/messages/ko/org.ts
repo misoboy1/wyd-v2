@@ -187,4 +187,17 @@ export const org = {
     grouped: "팀별 묶기",
     shown: "표시 {n}명 / 전체 {total}명",
   },
+  chat: {
+    open: "채팅하기",
+    mine: "우리 팀 채팅",
+    code: "참여코드",
+    copy: "코드 복사",
+    copied: "참여코드를 복사했습니다.",
+    hint: "카카오톡 앱에서 열립니다.",
+    register: "채팅방 등록",
+    edit: "채팅방 수정",
+    dlgTitle: "{team} 오픈채팅방",
+    dlgDesc:
+      "카카오톡에서 만든 오픈채팅방 링크(https://open.kakao.com/o/…)를 붙여넣으세요. 참여코드를 걸었다면 함께 입력하세요. 이 팀원과 관리자에게만 보입니다.",
+  },
 };

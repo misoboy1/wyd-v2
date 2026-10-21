@@ -3,9 +3,9 @@ import { Injectable } from "@nestjs/common";
 import { createHash, randomBytes } from "node:crypto";
 import type { FastifyRequest } from "fastify";
 import { and, eq, isNull } from "drizzle-orm";
-import type { PersonKind, PersonMe } from "@wyd/shared";
+import { teamInfo, type PersonChat, type PersonKind, type PersonMe } from "@wyd/shared";
 import { db } from "../db/client.js";
-import { personalLinks, visitors, volunteers } from "../db/schema.js";
+import { personalLinks, teamChats, visitors, volunteers } from "../db/schema.js";
 import { whoKey } from "../events/events.service.js";
 import { Limiter, clientIp } from "../common/limiter.js";
 import { UsersCache } from "../auth/users.cache.js";
@@ -87,6 +87,20 @@ export class PersonService {
 
   async person(req: FastifyRequest, count = true) {
     return (await this.lookup(req, count)).p;
+  }
+
+  /** 봉사자의 자기 팀 오픈채팅방 — 팀은 매번 명단에서 읽음(팀 이동·채팅방 변경이 바로 반영되게) */
+  async chat(p: PersonMe): Promise<PersonChat> {
+    if (p.kind !== "volunteer") return null;
+    const [v] = await db.select({ team: volunteers.team }).from(volunteers).where(eq(volunteers.id, p.id)).limit(1);
+    if (!v) return null;
+    const team = teamInfo(v).team;
+    const [c] = await db
+      .select({ team: teamChats.team, url: teamChats.url, code: teamChats.code })
+      .from(teamChats)
+      .where(eq(teamChats.team, team))
+      .limit(1);
+    return c ?? null;
   }
 
   /** 요청한 주체: 로그인 계정이 우선, 없으면 개인 링크 */
